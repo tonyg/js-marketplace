@@ -64,34 +64,19 @@ function anyUnify(aa, bb) {
 /*---------------------------------------------------------------------------*/
 /* Relaying */
 
-function Route(polarity, pattern, isMeta, level) {
-    isMeta = isMeta ? true : false;
-    level = (level === undefined) ? 0 : level;
-    switch (polarity) {
-    case "pub":
-	this.isSubscription = false;
-	break;
-    case "sub":
-	this.isSubscription = true;
-	break;
-    default:
-	throw { message: "Invalid route polarity: " + polarity,
-		polarity: polarity,
-		pattern: pattern,
-		isMeta: isMeta,
-		level: level };
-    }
+function Route(isSubscription, pattern, isMeta, level) {
+    this.isSubscription = isSubscription;
     this.pattern = pattern;
-    this.isMeta = isMeta;
-    this.level = level;
+    this.isMeta = isMeta ? true : false;
+    this.level = (level === undefined) ? 0 : level;
 }
 
 function sub(pattern, isMeta, level) {
-    return new Route("sub", pattern, isMeta, level);
+    return new Route(true, pattern, isMeta, level);
 }
 
 function pub(pattern, isMeta, level) {
-    return new Route("pub", pattern, isMeta, level);
+    return new Route(false, pattern, isMeta, level);
 }
 
 function spawn(actor) { /* TODO: initialRoutes */
