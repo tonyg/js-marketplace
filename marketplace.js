@@ -30,8 +30,8 @@ function unify1(a, b) {
 	   require any field mentioned by either side to be present in
 	   both. Does that make sense? */
 	var result = ({});
-	for (i in a) { if a.hasOwnProperty(i) result[i] = true; }
-	for (i in b) { if b.hasOwnProperty(i) result[i] = true; }
+	for (i in a) { if (a.hasOwnProperty(i)) result[i] = true; }
+	for (i in b) { if (b.hasOwnProperty(i)) result[i] = true; }
 	for (i in result) {
 	    if (result.hasOwnProperty(i)) {
 		result[i] = unify1(a[i], b[i]);
