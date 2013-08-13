@@ -18,9 +18,9 @@ function unify1(a, b) {
 
     if (Array.isArray(a) && Array.isArray(b)) {
 	if (a.length !== b.length) unificationFailed();
-	var result = [];
+	var result = new Array(a.length);
 	for (i = 0; i < a.length; i++) {
-	    result.push(unify1(a[i], b[i]));
+	    result[i] = unify1(a[i], b[i]);
 	}
 	return result;
     }
