@@ -270,7 +270,7 @@ World.prototype.performAction = function (pid, action) {
     case "spawn":
 	var pid = this.nextPid++;
 	this.processTable[pid] = { routes: action.initialRoutes, behavior: action.behavior };
-	if (behavior.boot) { this.asChild(pid, function () { behavior.boot() }); }
+	if (action.behavior.boot) { this.asChild(pid, function () { action.behavior.boot() }); }
 	this.issueRoutingUpdate();
 	break;
     case "routes":
@@ -327,3 +327,13 @@ World.prototype.handleEvent = function (e) {
 		event: e };
     }
 };
+
+/*---------------------------------------------------------------------------*/
+/* Ground interface */
+
+function Ground(bootActions) {
+    this.world = new World(bootActions);
+    this.subscriptions = {};
+}
+
+// HERE: Ground.prototype.
