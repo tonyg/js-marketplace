@@ -166,14 +166,15 @@ function filterEvent(e, routes) {
 /*---------------------------------------------------------------------------*/
 /* Configurations */
 
-function World(bootActions) {
+function World(bootFn) {
     this.nextPid = 0;
     this.eventQueue = [];
     this.processTable = {};
     this.downwardRoutes = [];
     this.processActions = [];
     this.activePid = null;
-    this.enqueueActions(-1, bootActions);
+    this.stepperId = null;
+    this.asChild(-1, bootFn);
 }
 
 /* Class state / methods */
@@ -190,6 +191,10 @@ World.updateRoutes = function (routes) {
 
 World.spawn = function (behavior, initialRoutes) {
     World.current.enqueueAction(spawn(behavior, initialRoutes));
+};
+
+World.wrap = function (f) {
+    return World.current.wrap(f);
 };
 
 /* Instance methods */
@@ -214,6 +219,24 @@ World.prototype.step = function () {
     return this.stepChildren() || !this.isQuiescent();
 };
 
+World.prototype.startStepping = function () {
+    var self = this;
+    if (this.stepperId) return;
+    if (this.step()) {
+	this.stepperId = setTimeout(function () {
+	    self.stepperId = null;
+	    self.startStepping();
+	}, 0);
+    }
+};
+
+World.prototype.stopStepping = function () {
+    if (this.stepperId) {
+	clearTimeout(this.stepperId);
+	this.stepperId = null;
+    }
+};
+
 World.prototype.asChild = function (pid, f) {
     var oldWorld = World.current;
     var result = null;
@@ -229,6 +252,15 @@ World.prototype.asChild = function (pid, f) {
     return result;
 };
 
+World.prototype.wrap = function (f) {
+    var savedWorld = this;
+    var savedPid = this.activePid;
+    return function () {
+	var actuals = arguments;
+	return savedWorld.asChild(savedPid, function () { return f.apply(null, actuals) });
+    };
+};
+
 World.prototype.kill = function (pid, exn) {
     console.log("Killed process " + pid + (exn ? " with reason " + exn.message : ""));
     delete this.processTable[pid];
@@ -240,7 +272,7 @@ World.prototype.stepChildren = function () {
     for (var pid in this.processTable) {
 	var p = this.processTable[pid];
 	if (p.behavior.step /* exists, haven't called it yet */) {
-	    var childBusy = this.asChild(pid, function () { p.behavior.step() });
+	    var childBusy = this.asChild(pid, function () { return p.behavior.step() });
 	    someChildBusy = someChildBusy || childBusy;
 	}
     }
@@ -298,6 +330,7 @@ World.prototype.aggregateRoutes = function (base) {
 	    acc.push(p.routes[i]);
 	}
     }
+    return acc;
 };
 
 World.prototype.issueRoutingUpdate = function () {
@@ -331,9 +364,46 @@ World.prototype.handleEvent = function (e) {
 /*---------------------------------------------------------------------------*/
 /* Ground interface */
 
-function Ground(bootActions) {
-    this.world = new World(bootActions);
-    this.subscriptions = {};
+function Ground(bootFn) {
+    var self = this;
+    this.stepperId = null;
+    this.wrap(function () {
+	self.world = new World(bootFn);
+    })();
 }
 
-// HERE: Ground.prototype.
+Ground.prototype.wrap = function (f) {
+    var self = this;
+    return function () {
+	var oldWorld = World.current;
+	var result = null;
+	World.current = self;
+	try {
+	    result = f();
+	} catch (e) {
+	    World.current = oldWorld;
+	    throw e;
+	}
+	World.current = oldWorld;
+	return result;
+    };
+};
+
+Ground.prototype.step = function () {
+    var self = this;
+    return this.wrap(function () {
+	return self.world.step();
+    })();
+};
+
+Ground.prototype.startStepping = World.prototype.startStepping;
+Ground.prototype.stopStepping = World.prototype.stopStepping;
+
+Ground.prototype.enqueueAction = function (action) {
+    if (action.type === 'routes') {
+	// Ignore it. These are generated outside user control so it
+	// shouldn't be an error.
+    } else {
+	console.error("You have sent a message into the outer void.", action);
+    }
+};
