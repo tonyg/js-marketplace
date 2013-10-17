@@ -45,6 +45,7 @@ function unify1(a, b) {
 
 function unify(a, b) {
     try {
+	// console.log("unify", JSON.stringify(a), JSON.stringify(b));
 	return {result: unify1(a, b)};
     } catch (e) {
 	if (e.unificationFailed) return undefined;
@@ -145,7 +146,7 @@ function filterEvent(e, routes) {
 		}
 	    }
 	}
-	return result.length ? result : null;
+	return result.length ? updateRoutes(result) : null;
     case "send":
 	for (var i = 0; i < routes.length; i++) {
 	    var r = routes[i];
@@ -262,7 +263,11 @@ World.prototype.wrap = function (f) {
 };
 
 World.prototype.kill = function (pid, exn) {
-    console.log("Killed process " + pid + (exn ? " with reason " + exn.message : ""));
+    if (exn && exn.stack) {
+	console.log("Killed process", pid, exn, exn.stack);
+    } else {
+	console.log("Killed process", pid);
+    }
     delete this.processTable[pid];
     this.issueRoutingUpdate();
 };
@@ -342,6 +347,7 @@ World.prototype.dispatchEvent = function (e) {
     for (var pid in this.processTable) {
 	var p = this.processTable[pid];
 	var e1 = filterEvent(e, p.routes);
+	// console.log("filtering", e, p.routes, e1);
 	if (e1) { this.asChild(pid, function () { p.behavior.handleEvent(e1) }); }
     }
 };
@@ -401,8 +407,9 @@ Ground.prototype.stopStepping = World.prototype.stopStepping;
 
 Ground.prototype.enqueueAction = function (action) {
     if (action.type === 'routes') {
-	// Ignore it. These are generated outside user control so it
-	// shouldn't be an error.
+	if (action.routes.length > 0) {
+	    console.error("You have subscribed to a nonexistent event source.", action);
+	}
     } else {
 	console.error("You have sent a message into the outer void.", action);
     }
