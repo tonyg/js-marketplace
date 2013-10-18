@@ -25,7 +25,6 @@ JQueryDriver.prototype.updateHandlerMap = function (routes) {
 		handler = (function (selector, eventName) { // JS is broken
 		    return World.wrap(function (e) {
 			World.send(["jQuery", selector, eventName, e]);
-			World.current.startStepping();
 		    });
 		})(selector, eventName);
 		console.log("jQuery", "installing", selector, eventName);
@@ -35,7 +34,7 @@ JQueryDriver.prototype.updateHandlerMap = function (routes) {
 	}
     }
     for (var key in this.handlerMap) {
-	if (hasOwnProperty(this.handlerMap, key) && !hasOwnProperty(newMap, key)) {
+	if (this.handlerMap.hasOwnProperty(key) && !(key in newMap)) {
 	    var keyArray = JSON.parse(key);
 	    var handler = this.handlerMap[key];
 	    var selector = keyArray[0];
@@ -58,7 +57,7 @@ JQueryDriver.prototype.handleEvent = function (e) {
 };
 
 var g = new Ground(function () {
-    console.log('here');
+    console.log('starting ground boot');
     World.spawn(new Spy());
     World.spawn(new JQueryDriver());
     World.spawn({
@@ -70,7 +69,12 @@ var g = new Ground(function () {
 	    World.send({msg: 'hello inner world'}, 0);
 	},
 	handleEvent: function (e) {
-	    console.log('dummy handleEvent', e);
+	    if (e.type === "send" && e.message[0] === "jQuery") {
+		console.log("got a click");
+		World.updateRoutes([]);
+	    } else {
+		console.log('dummy handleEvent', e);
+	    }
 	}
     });
 });

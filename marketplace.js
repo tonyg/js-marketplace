@@ -146,7 +146,7 @@ function filterEvent(e, routes) {
 		}
 	    }
 	}
-	return result.length ? updateRoutes(result) : null;
+	return updateRoutes(result);
     case "send":
 	for (var i = 0; i < routes.length; i++) {
 	    var r = routes[i];
@@ -180,34 +180,57 @@ function World(bootFn) {
 
 /* Class state / methods */
 
-World.current = null; // parameter
+World.stack = [];
+
+World.current = function () {
+    return World.stack[World.stack.length - 1];
+};
 
 World.send = function (m, metaLevel, isFeedback) {
-    World.current.enqueueAction(sendMessage(m, metaLevel, isFeedback));
+    World.current().enqueueAction(sendMessage(m, metaLevel, isFeedback));
 };
 
 World.updateRoutes = function (routes) {
-    World.current.enqueueAction(updateRoutes(routes));
+    World.current().enqueueAction(updateRoutes(routes));
 };
 
 World.spawn = function (behavior, initialRoutes) {
-    World.current.enqueueAction(spawn(behavior, initialRoutes));
+    World.current().enqueueAction(spawn(behavior, initialRoutes));
+};
+
+World.withWorldStack = function (stack, f) {
+    var oldStack = World.stack;
+    World.stack = stack;
+    var result = null;
+    try {
+	result = f();
+    } catch (e) {
+	World.stack = oldStack;
+	throw e;
+    }
+    World.stack = oldStack;
+    return result;
 };
 
 World.wrap = function (f) {
-    return World.current.wrap(f);
+    var savedStack = World.stack.slice();
+    var savedPid = World.current().activePid;
+    return function () {
+	var actuals = arguments;
+	return World.withWorldStack(savedStack, function () {
+	    var result = World.current().asChild(savedPid, function () {
+		return f.apply(null, actuals);
+	    });
+	    World.stack[0].startStepping();
+	    return result;
+	});
+    };
 };
 
 /* Instance methods */
 
 World.prototype.enqueueAction = function (action) {
     this.processActions.push([this.activePid, action]);
-};
-
-World.prototype.enqueueActions = function (pid, actions) {
-    for (var i = 0; i < actions.length; i++) {
-	this.processActions.push([pid, actions[i]]);
-    }
 };
 
 World.prototype.isQuiescent = function () {
@@ -239,9 +262,8 @@ World.prototype.stopStepping = function () {
 };
 
 World.prototype.asChild = function (pid, f) {
-    var oldWorld = World.current;
+    World.stack.push(this);
     var result = null;
-    World.current = this;
     this.activePid = pid;
     try {
 	result = f();
@@ -249,24 +271,17 @@ World.prototype.asChild = function (pid, f) {
 	this.kill(pid, e);
     }
     this.activePid = null;
-    World.current = oldWorld;
+    if (World.stack.pop() !== this) {
+	throw { message: "Internal error: World stack imbalance" };
+    }
     return result;
-};
-
-World.prototype.wrap = function (f) {
-    var savedWorld = this;
-    var savedPid = this.activePid;
-    return function () {
-	var actuals = arguments;
-	return savedWorld.asChild(savedPid, function () { return f.apply(null, actuals) });
-    };
 };
 
 World.prototype.kill = function (pid, exn) {
     if (exn && exn.stack) {
 	console.log("Killed process", pid, exn, exn.stack);
     } else {
-	console.log("Killed process", pid);
+	console.log("Killed process", pid, exn);
     }
     delete this.processTable[pid];
     this.issueRoutingUpdate();
@@ -311,7 +326,11 @@ World.prototype.performAction = function (pid, action) {
 	this.issueRoutingUpdate();
 	break;
     case "routes":
-	this.processTable[pid].routes = action.routes;
+	if (pid in this.processTable) {
+	    // it may not be: this might be the routing update from a
+	    // kill of the process
+	    this.processTable[pid].routes = action.routes;
+	}
 	this.issueRoutingUpdate();
 	break;
     case "send":
@@ -373,33 +392,16 @@ World.prototype.handleEvent = function (e) {
 function Ground(bootFn) {
     var self = this;
     this.stepperId = null;
-    this.wrap(function () {
+    World.withWorldStack([this], function () {
 	self.world = new World(bootFn);
-    })();
+    });
 }
-
-Ground.prototype.wrap = function (f) {
-    var self = this;
-    return function () {
-	var oldWorld = World.current;
-	var result = null;
-	World.current = self;
-	try {
-	    result = f();
-	} catch (e) {
-	    World.current = oldWorld;
-	    throw e;
-	}
-	World.current = oldWorld;
-	return result;
-    };
-};
 
 Ground.prototype.step = function () {
     var self = this;
-    return this.wrap(function () {
+    return World.withWorldStack([this], function () {
 	return self.world.step();
-    })();
+    });
 };
 
 Ground.prototype.startStepping = World.prototype.startStepping;
