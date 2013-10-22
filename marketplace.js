@@ -81,6 +81,10 @@ Route.prototype.lift = function () {
     return new Route(this.isSubscription, this.pattern, this.metaLevel + 1, this.level);
 };
 
+Route.prototype.toJSON = function () {
+    return [this.isSubscription ? "sub" : "pub", this.pattern, this.metaLevel, this.level];
+};
+
 function sub(pattern, metaLevel, level) {
     return new Route(true, pattern, metaLevel, level);
 }
@@ -126,27 +130,31 @@ function liftRoutes(routes) {
     return result;
 }
 
-function filterEvent(e, routes) {
-    switch (e.type) {
-    case "routes":
-	var result = [];
-	for (var i = 0; i < e.routes.length; i++) {
-	    for (var j = 0; j < routes.length; j++) {
-		var ri = e.routes[i];
-		var rj = routes[j];
-		if (ri.isSubscription === !rj.isSubscription
-		    && ri.metaLevel === rj.metaLevel
-		    && ri.level < rj.level)
-		{
-		    var u = unify(ri.pattern, rj.pattern);
-		    if (u) {
-			var rk = new Route(ri.isSubscription, u.result, ri.metaLevel, ri.level);
-			result.push(rk);
-		    }
+function intersectRoutes(rs1, rs2, ignoreLevels) {
+    var result = [];
+    for (var i = 0; i < rs1.length; i++) {
+	for (var j = 0; j < rs2.length; j++) {
+	    var ri = rs1[i];
+	    var rj = rs2[j];
+	    if (ri.isSubscription === !rj.isSubscription
+		&& ri.metaLevel === rj.metaLevel
+		&& (ignoreLevels || (ri.level < rj.level)))
+	    {
+		var u = unify(ri.pattern, rj.pattern);
+		if (u) {
+		    var rk = new Route(ri.isSubscription, u.result, ri.metaLevel, ri.level);
+		    result.push(rk);
 		}
 	    }
 	}
-	return updateRoutes(result);
+    }
+    return result;
+}
+
+function filterEvent(e, routes) {
+    switch (e.type) {
+    case "routes":
+	return updateRoutes(intersectRoutes(e.routes, routes));
     case "send":
 	for (var i = 0; i < routes.length; i++) {
 	    var r = routes[i];
@@ -198,6 +206,10 @@ World.spawn = function (behavior, initialRoutes) {
     World.current().enqueueAction(spawn(behavior, initialRoutes));
 };
 
+World.exit = function (exn) {
+    World.current().killActive(exn);
+};
+
 World.withWorldStack = function (stack, f) {
     var oldStack = World.stack;
     World.stack = stack;
@@ -228,6 +240,10 @@ World.wrap = function (f) {
 };
 
 /* Instance methods */
+
+World.prototype.killActive = function (exn) {
+    this.kill(this.activePid, exn);
+};
 
 World.prototype.enqueueAction = function (action) {
     this.processActions.push([this.activePid, action]);
@@ -279,9 +295,9 @@ World.prototype.asChild = function (pid, f) {
 
 World.prototype.kill = function (pid, exn) {
     if (exn && exn.stack) {
-	console.log("Killed process", pid, exn, exn.stack);
+	console.log("Process exited", pid, exn, exn.stack);
     } else {
-	console.log("Killed process", pid, exn);
+	console.log("Process exited", pid, exn);
     }
     delete this.processTable[pid];
     this.issueRoutingUpdate();
@@ -387,11 +403,88 @@ World.prototype.handleEvent = function (e) {
 };
 
 /*---------------------------------------------------------------------------*/
+/* Utilities: detecting presence/absence events via routing events */
+
+function PresenceDetector(initialRoutes) {
+    this.state = this._digestRoutes(initialRoutes === undefined ? [] : initialRoutes);
+}
+
+PresenceDetector.prototype._digestRoutes = function (routes) {
+    var newState = {};
+    for (var i = 0; i < routes.length; i++) {
+	newState[JSON.stringify(routes[i].toJSON())] = routes[i];
+    }
+    return newState;
+};
+
+PresenceDetector.prototype.handleRoutes = function (routes) {
+    var added = [];
+    var removed = [];
+    var newState = this._digestRoutes(routes);
+    for (var k in newState) {
+	if (!(k in this.state)) {
+	    added.push(newState[k]);
+	} else {
+	    delete this.state[k];
+	}
+    }
+    for (var k in this.state) {
+	removed.push(this.state[k]);
+    }
+    this.state = newState;
+    return { added: added, removed: removed };
+};
+
+PresenceDetector.prototype.presenceExistsFor = function (probeRoute) {
+    for (var k in this.state) {
+	var existingRoute = this.state[k];
+	if (probeRoute.isSubscription === !existingRoute.isSubscription
+	    && probeRoute.metaLevel === existingRoute.metaLevel
+	    && unify(probeRoute.pattern, existingRoute.pattern))
+	{
+	    return true;
+	}
+    }
+    return false;
+};
+
+/*---------------------------------------------------------------------------*/
+/* Utilities: matching demand for some service */
+
+function DemandMatcher(demandSideIsSubscription, demandIncreaseHandler, supplyDecreaseHandler) {
+    this.demandSideIsSubscription = demandSideIsSubscription;
+    this.demandIncreaseHandler = demandIncreaseHandler;
+    this.supplyDecreaseHandler = supplyDecreaseHandler || function (r) {
+	console.error("Unexpected drop in supply for route", r);
+    };
+    this.state = new PresenceDetector();
+}
+
+DemandMatcher.prototype.handleRoutes = function (routes) {
+    var changes = this.state.handleRoutes(routes);
+    for (var i = 0; i < changes.added.length; i++) {
+	if (changes.added[i].isSubscription === this.demandSideIsSubscription
+	    && !this.state.presenceExistsFor(changes.added[i]))
+	{
+	    this.demandIncreaseHandler(changes.added[i]);
+	}
+    }
+    for (var i = 0; i < changes.removed.length; i++) {
+	if (changes.removed[i].isSubscription === !this.demandSideIsSubscription
+	    && this.state.presenceExistsFor(changes.removed[i]))
+	{
+	    this.supplyDecreaseHandler(changes.removed[i]);
+	}
+    }
+}
+
+/*---------------------------------------------------------------------------*/
 /* Ground interface */
 
 function Ground(bootFn) {
     var self = this;
     this.stepperId = null;
+    this.state = new PresenceDetector();
     World.withWorldStack([this], function () {
 	self.world = new World(bootFn);
     });
@@ -409,8 +502,9 @@ Ground.prototype.stopStepping = World.prototype.stopStepping;
 
 Ground.prototype.enqueueAction = function (action) {
     if (action.type === 'routes') {
-	if (action.routes.length > 0) {
-	    console.error("You have subscribed to a nonexistent event source.", action);
+	var added = this.state.handleRoutes(action.routes).added;
+	if (added.length > 0) {
+	    console.error("You have subscribed to a nonexistent event source.", added);
 	}
     } else {
 	console.error("You have sent a message into the outer void.", action);

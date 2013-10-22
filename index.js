@@ -9,50 +9,41 @@ Spy.prototype.handleEvent = function (e) {
     console.log("SPY", e);
 };
 
-function JQueryDriver() {
-    this.handlerMap = {};
+function JQueryEventRouter(selector, eventName) {
+    var self = this;
+    this.selector = selector;
+    this.eventName = eventName;
+    this.handler =
+	World.wrap(function (e) { World.send(["jQuery", self.selector, self.eventName, e]); });
+    $(this.selector).on(this.eventName, this.handler);
 }
 
-JQueryDriver.prototype.updateHandlerMap = function (routes) {
-    var newMap = {};
-    for (var i = 0; i < routes.length; i++) {
-	var selector = routes[i].pattern[1];
-	var eventName = routes[i].pattern[2];
-	if (typeof(selector) === 'string' && typeof(eventName) === 'string') {
-	    var key = JSON.stringify([selector, eventName]);
-	    var handler = this.handlerMap[key];
-	    if (!handler) {
-		handler = (function (selector, eventName) { // JS is broken
-		    return World.wrap(function (e) {
-			World.send(["jQuery", selector, eventName, e]);
-		    });
-		})(selector, eventName);
-		console.log("jQuery", "installing", selector, eventName);
-		$(selector).on(eventName, handler);
-	    }
-	    newMap[key] = handler;
-	}
+JQueryEventRouter.prototype.handleEvent = function (e) {
+    if (e.type === "routes" && e.routes.length === 0) {
+	$(this.selector).off(this.eventName, this.handler);
+	World.exit();
     }
-    for (var key in this.handlerMap) {
-	if (this.handlerMap.hasOwnProperty(key) && !(key in newMap)) {
-	    var keyArray = JSON.parse(key);
-	    var handler = this.handlerMap[key];
-	    var selector = keyArray[0];
-	    var eventName = keyArray[1];
-	    console.log("jQuery", "removing", selector, eventName);
-	    $(selector).off(eventName, handler);
-	}
-    }
-    this.handlerMap = newMap;
 };
 
+function JQueryDriver() {
+    var self = this;
+    this.state = new DemandMatcher(true, function (r) {
+	var selector = r.pattern[1];
+	var eventName = r.pattern[2];
+	World.spawn(new JQueryEventRouter(selector, eventName),
+		    [pub(["jQuery", selector, eventName, __]),
+		     pub(["jQuery", selector, eventName, __], 0, 1)]);
+    });
+}
+
 JQueryDriver.prototype.boot = function () {
-    World.updateRoutes([pub(["jQuery", __, __, __], 0, 1)]);
+    World.updateRoutes([pub(["jQuery", __, __, __], 0, 1),
+			sub(["jQuery", __, __, __], 0, 1)]);
 };
 
 JQueryDriver.prototype.handleEvent = function (e) {
     if (e.type === "routes") {
-	this.updateHandlerMap(e.routes);
+	this.state.handleRoutes(e.routes);
     }
 };
 
@@ -61,19 +52,24 @@ var g = new Ground(function () {
     World.spawn(new Spy());
     World.spawn(new JQueryDriver());
     World.spawn({
-	step: function () { console.log('dummy step'); },
+	// step: function () { console.log('dummy step'); },
 	boot: function () {
 	    console.log('dummy boot');
-	    World.updateRoutes([sub(["jQuery", "#testButton", "click", __]), sub(__, 1)]);
+	    World.updateRoutes([sub(["jQuery", "#testButton", "click", __]),
+				sub(["jQuery", "#testButton2", "click", __]),
+				sub(__, 1)]);
 	    World.send({msg: 'hello outer world'}, 1);
 	    World.send({msg: 'hello inner world'}, 0);
 	},
 	handleEvent: function (e) {
 	    if (e.type === "send" && e.message[0] === "jQuery") {
-		console.log("got a click");
-		World.updateRoutes([]);
-	    } else {
-		console.log('dummy handleEvent', e);
+		if (e.message[1] === "#testButton") {
+		    console.log("got a click");
+		    World.updateRoutes([sub(["jQuery", "#testButton2", "click", __])]);
+		} else {
+		    console.log("got a click 2");
+		    // World.exit();
+		}
 	    }
 	}
     });
