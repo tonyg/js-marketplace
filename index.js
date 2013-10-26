@@ -60,6 +60,24 @@ var g = new Ground(function () {
 				sub(__, 1)]);
 	    World.send({msg: 'hello outer world'}, 1);
 	    World.send({msg: 'hello inner world'}, 0);
+	    // World.spawn(new World(function () {
+	    // 	World.spawn({
+	    // 	    boot: function () {
+	    // 		console.log('w1p1');
+	    // 		World.updateRoutes([sub('w1p1')]);
+	    // 	    },
+	    // 	    handleEvent: function (e) { console.log('w1p1', e); }
+	    // 	})
+	    // }))
+	    // World.spawn(new World(function () {
+	    // 	World.spawn({
+	    // 	    boot: function () {
+	    // 		console.log('w2p2');
+	    // 		World.updateRoutes([sub('w2p2')]);
+	    // 	    },
+	    // 	    handleEvent: function (e) { console.log('w2p2', e); }
+	    // 	})
+	    // }));
 	},
 	handleEvent: function (e) {
 	    if (e.type === "send" && e.message[0] === "jQuery") {

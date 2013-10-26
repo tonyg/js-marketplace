@@ -391,7 +391,7 @@ World.prototype.handleEvent = function (e) {
     switch (e.type) {
     case "routes":
 	this.downwardRoutes = liftRoutes(e.routes);
-	this.issueRoutingUpdate();
+	this.eventQueue.push(updateRoutes(this.aggregateRoutes(this.downwardRoutes)));
 	break;
     case "send":
 	this.eventQueue.push(sendMessage(e.message, e.metaLevel + 1, e.isFeedback));
