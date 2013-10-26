@@ -373,8 +373,12 @@ World.prototype.aggregateRoutes = function (base) {
     return acc;
 };
 
-World.prototype.issueRoutingUpdate = function () {
+World.prototype.issueLocalRoutingUpdate = function () {
     this.eventQueue.push(updateRoutes(this.aggregateRoutes(this.downwardRoutes)));
+};
+
+World.prototype.issueRoutingUpdate = function () {
+    this.issueLocalRoutingUpdate();
     World.updateRoutes(dropRoutes(this.aggregateRoutes([])));
 };
 
@@ -391,7 +395,7 @@ World.prototype.handleEvent = function (e) {
     switch (e.type) {
     case "routes":
 	this.downwardRoutes = liftRoutes(e.routes);
-	this.eventQueue.push(updateRoutes(this.aggregateRoutes(this.downwardRoutes)));
+	this.issueLocalRoutingUpdate();
 	break;
     case "send":
 	this.eventQueue.push(sendMessage(e.message, e.metaLevel + 1, e.isFeedback));
