@@ -444,6 +444,7 @@ PresenceDetector.prototype.presenceExistsFor = function (probeRoute) {
 	var existingRoute = this.state[k];
 	if (probeRoute.isSubscription === !existingRoute.isSubscription
 	    && probeRoute.metaLevel === existingRoute.metaLevel
+	    && probeRoute.level == existingRoute.level
 	    && unify(probeRoute.pattern, existingRoute.pattern))
 	{
 	    return true;
