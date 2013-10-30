@@ -70,7 +70,7 @@ var g = new Ground(function () {
 	    // }));
 	},
 	handleEvent: function (e) {
-	    if (e.type === "send" && e.message[0] === "jQuery") {
+	    if (e.type === "message" && e.message[0] === "jQuery") {
 		if (e.message[1] === "#testButton") {
 		    console.log("got a click");
 		    World.updateRoutes([sub(["jQuery", "#testButton2", "click", __])]);

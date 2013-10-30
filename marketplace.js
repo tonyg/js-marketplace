@@ -104,7 +104,7 @@ function updateRoutes(routes) {
 }
 
 function sendMessage(m, metaLevel, isFeedback) {
-    return { type: "send",
+    return { type: "message",
 	     metaLevel: (metaLevel === undefined) ? 0 : metaLevel,
 	     message: m,
 	     isFeedback: (isFeedback === undefined) ? false : isFeedback };
@@ -155,7 +155,7 @@ function filterEvent(e, routes) {
     switch (e.type) {
     case "routes":
 	return updateRoutes(intersectRoutes(e.routes, routes));
-    case "send":
+    case "message":
 	for (var i = 0; i < routes.length; i++) {
 	    var r = routes[i];
 	    if (e.metaLevel === r.metaLevel
@@ -349,7 +349,7 @@ World.prototype.performAction = function (pid, action) {
 	}
 	this.issueRoutingUpdate();
 	break;
-    case "send":
+    case "message":
 	if (action.metaLevel === 0) {
 	    this.eventQueue.push(action);
 	} else {
@@ -397,7 +397,7 @@ World.prototype.handleEvent = function (e) {
 	this.downwardRoutes = liftRoutes(e.routes);
 	this.issueLocalRoutingUpdate();
 	break;
-    case "send":
+    case "message":
 	this.eventQueue.push(sendMessage(e.message, e.metaLevel + 1, e.isFeedback));
 	break;
     default:
