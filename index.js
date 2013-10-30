@@ -25,32 +25,22 @@ JQueryEventRouter.prototype.handleEvent = function (e) {
     }
 };
 
-function JQueryDriver() {
-    var self = this;
-    this.state = new DemandMatcher(true, function (r) {
+function spawnJQueryDriver() {
+    var d = new DemandMatcher(["jQuery", __, __, __]);
+    d.onDemandIncrease = function (r) {
 	var selector = r.pattern[1];
 	var eventName = r.pattern[2];
 	World.spawn(new JQueryEventRouter(selector, eventName),
 		    [pub(["jQuery", selector, eventName, __]),
 		     pub(["jQuery", selector, eventName, __], 0, 1)]);
-    });
+    };
+    World.spawn(d);
 }
-
-JQueryDriver.prototype.boot = function () {
-    World.updateRoutes([pub(["jQuery", __, __, __], 0, 1),
-			sub(["jQuery", __, __, __], 0, 1)]);
-};
-
-JQueryDriver.prototype.handleEvent = function (e) {
-    if (e.type === "routes") {
-	this.state.handleRoutes(e.routes);
-    }
-};
 
 var g = new Ground(function () {
     console.log('starting ground boot');
     World.spawn(new Spy());
-    World.spawn(new JQueryDriver());
+    spawnJQueryDriver();
     World.spawn({
 	// step: function () { console.log('dummy step'); },
 	boot: function () {

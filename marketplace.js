@@ -421,6 +421,12 @@ PresenceDetector.prototype._digestRoutes = function (routes) {
     return newState;
 };
 
+PresenceDetector.prototype.getRouteList = function () {
+    var rs = [];
+    for (var k in this.state) { rs.push(this.state[k]); }
+    return rs;
+};
+
 PresenceDetector.prototype.handleRoutes = function (routes) {
     var added = [];
     var removed = [];
@@ -456,32 +462,77 @@ PresenceDetector.prototype.presenceExistsFor = function (probeRoute) {
 /*---------------------------------------------------------------------------*/
 /* Utilities: matching demand for some service */
 
-function DemandMatcher(demandSideIsSubscription, demandIncreaseHandler, supplyDecreaseHandler) {
-    this.demandSideIsSubscription = demandSideIsSubscription;
-    this.demandIncreaseHandler = demandIncreaseHandler;
-    this.supplyDecreaseHandler = supplyDecreaseHandler || function (r) {
-	console.error("Unexpected drop in supply for route", r);
+function DemandMatcher(pattern, metaLevel, options) {
+    options = $.extend(options, {
+	demandLevel: 0,
+	supplyLevel: 0,
+	demandSideIsSubscription: true
+    });
+    this.pattern = pattern;
+    this.metaLevel = metaLevel;
+    this.demandLevel = options.demandLevel;
+    this.supplyLevel = options.supplyLevel;
+    this.demandSideIsSubscription = options.demandSideIsSubscription;
+    this.onDemandIncrease = function (r) {
+	console.error("Unhandled increase in demand for route", r);
+    };
+    this.onSupplyDecrease = function (r) {
+	console.error("Unhandled decrease in supply for route", r);
     };
     this.state = new PresenceDetector();
 }
 
+DemandMatcher.prototype.boot = function () {
+    World.updateRoutes([this.computeDetector(true),
+			this.computeDetector(false)]);
+};
+
+DemandMatcher.prototype.handleEvent = function (e) {
+    if (e.type === "routes") {
+	this.handleRoutes(e.routes);
+    }
+};
+
+DemandMatcher.prototype.computeDetector = function (demandSide) {
+    var maxLevel = (this.demandLevel > this.supplyLevel ? this.demandLevel : this.supplyLevel);
+    return new Route(this.demandSideIsSubscription ? !demandSide : demandSide,
+		     this.pattern,
+		     this.metaLevel,
+		     maxLevel + 1);
+};
+
 DemandMatcher.prototype.handleRoutes = function (routes) {
     var changes = this.state.handleRoutes(routes);
-    for (var i = 0; i < changes.added.length; i++) {
-	if (changes.added[i].isSubscription === this.demandSideIsSubscription
-	    && !this.state.presenceExistsFor(changes.added[i]))
-	{
-	    this.demandIncreaseHandler(changes.added[i]);
+    this.incorporateChanges(true, changes.added);
+    this.incorporateChanges(false, changes.removed);
+};
+
+DemandMatcher.prototype.incorporateChanges = function (isArrivals, routeList) {
+    var relevantChangeDetector = this.computeDetector(isArrivals);
+    var expectedChangeLevel = isArrivals ? this.demandLevel : this.supplyLevel;
+    var expectedPeerLevel = isArrivals ? this.supplyLevel : this.demandLevel;
+    for (var i = 0; i < routeList.length; i++) {
+	var changed = routeList[i];
+	if (changed.level != expectedChangeLevel) continue;
+	var relevantChangedN = intersectRoutes([changed], [relevantChangeDetector]);
+	if (relevantChangedN.length === 0) continue;
+	var relevantChanged = relevantChangedN[0]; /* there can be only one */
+	var peerDetector = new Route(relevantChanged.isSubscription,
+				     relevantChanged.pattern,
+				     relevantChanged.metaLevel,
+				     expectedPeerLevel + 1);
+	var peerRoutes = intersectRoutes(this.state.getRouteList(), [peerDetector]);
+	var peerExists = false;
+	for (var j = 0; j < peerRoutes.length; j++) {
+	    if (peerRoutes[j].level == expectedPeerLevel) {
+		peerExists = true;
+		break;
+	    }
 	}
+	if (isArrivals && !peerExists) { this.onDemandIncrease(relevantChanged); }
+	if (!isArrivals && peerExists) { this.onSupplyDecrease(relevantChanged); }
     }
-    for (var i = 0; i < changes.removed.length; i++) {
-	if (changes.removed[i].isSubscription === !this.demandSideIsSubscription
-	    && this.state.presenceExistsFor(changes.removed[i]))
-	{
-	    this.supplyDecreaseHandler(changes.removed[i]);
-	}
-    }
-}
+};
 
 /*---------------------------------------------------------------------------*/
 /* Ground interface */
