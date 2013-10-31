@@ -1,0 +1,24 @@
+div.utterance span.timestamp {
+    color: #d0d0d0;
+}
+
+div.utterance span.timestamp:after {
+    content: " ";
+}
+
+div.utterance span.nym {
+    color: #00c000;
+}
+
+div.utterance span.nym:after {
+    content: ": ";
+}
+
+#chat_output {
+    height: 15em;
+    overflow-y: scroll;
+}
+
+#chat_input {
+    width: 80%;
+}

@@ -1,4 +1,4 @@
-Spy///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 // Wire protocol representation of events and actions
 
 function encodeEvent(e) {
@@ -114,7 +114,7 @@ WebSocketConnection.prototype.aggregateRoutes = function () {
 			  r.metaLevel,
 			  r.level));
     }
-    console.log("WebSocketConnection", this.label, rs);
+    // console.log("WebSocketConnection", this.label, rs);
     return rs;
 };
 
@@ -134,7 +134,7 @@ WebSocketConnection.prototype.sendLocalRoutes = function () {
 };
 
 WebSocketConnection.prototype.handleEvent = function (e) {
-    console.log("WebSocketConnection.handleEvent", e);
+    // console.log("WebSocketConnection.handleEvent", e);
     switch (e.type) {
     case "routes":
 	this.localRoutes = [];
@@ -182,20 +182,34 @@ WebSocketConnection.prototype.reconnect = function () {
 };
 
 WebSocketConnection.prototype.onopen = function (e) {
-    console.log("onopen", e);
+    // console.log("onopen", e);
     this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
     this.sendLocalRoutes();
 };
 
+function subtractRoutes(rs1, rs2) {
+    var toRemove = ({});
+    for (var i = 0; i < rs2.length; i++) {
+	toRemove[rs2[i].toJSON()] = true;
+    }
+    var result = [];
+    for (var i = 0; i < rs1.length; i++) {
+	if (!(rs1[i].toJSON() in toRemove)) {
+	    result.push(rs1[i]);
+	}
+    }
+    return result;
+};
+
 WebSocketConnection.prototype.onmessage = function (wse) {
-    console.log("onmessage", wse);
+    // console.log("onmessage", wse);
     var j = JSON.parse(wse.data);
     var e = decodeAction(j);
     switch (e.type) {
     case "routes":
 	if (this.prevPeerRoutesMessage !== wse.data) {
 	    this.prevPeerRoutesMessage = wse.data;
-	    this.peerRoutes = e.routes;
+	    this.peerRoutes = subtractRoutes(e.routes, this.localRoutes);
 	    World.updateRoutes(this.aggregateRoutes());
 	}
 	break;
@@ -209,7 +223,7 @@ WebSocketConnection.prototype.onmessage = function (wse) {
 
 WebSocketConnection.prototype.onclose = function (e) {
     var self = this;
-    console.log("onclose", e);
+    // console.log("onclose", e);
     if (this.shouldReconnect) {
 	console.log("reconnecting to " + this.wsurl + " in " + this.reconnectDelay + "ms");
 	setTimeout(World.wrap(function () { self.reconnect(); }), this.reconnectDelay);
@@ -224,12 +238,38 @@ WebSocketConnection.prototype.onclose = function (e) {
 ///////////////////////////////////////////////////////////////////////////
 // Main
 
+function updateNymList(rs) {
+    var nyms = [];
+    for (var i = 0; i < rs.length; i++) {
+	var p = rs[i].pattern;
+	if (p[0] === "broker"
+	    && p[1] === 0
+	    && p[2][1] === "says")
+	{
+	    nyms.push(p[2][0]);
+	}
+    }
+    console.log(nyms);
+}
+
+function outputUtterance(who, what) {
+    var stamp = $("<span/>").text((new Date()).toGMTString()).addClass("timestamp");
+    var nymLabel = $("<span/>").text(who).addClass("nym");
+    var utterance = $("<span/>").text(what).addClass("utterance");
+    var o = $("#chat_output");
+    o.append($("<div/>")
+	     .append([stamp, nymLabel, utterance])
+	     .addClass("utterance"));
+    o[0].scrollTop = o[0].scrollHeight;
+}
+
 $(document).ready(function () {
     $("#chat_form").submit(function (e) { e.preventDefault(); return false; });
+    $("#nym_form").submit(function (e) { e.preventDefault(); return false; });
 
     var g = new Ground(function () {
 	console.log('starting ground boot');
-	World.spawn(new Spy());
+	// World.spawn(new Spy());
 	spawnJQueryDriver();
 	World.spawn(new WebSocketConnection("broker", "ws://localhost:8000/", true));
 	World.spawn({
@@ -247,7 +287,11 @@ $(document).ready(function () {
 			sub(["broker", 0, [__, "says", __]], 0, 1)];
 	    },
 	    handleEvent: function (e) {
-		if (e.type === "message") {
+		switch (e.type) {
+		case "routes":
+		    updateNymList(e.routes);
+		    break;
+		case "message":
 		    switch (e.message[0]) {
 		    case "jQuery":
 			switch (e.message[1])  {
@@ -255,7 +299,9 @@ $(document).ready(function () {
 			    var inp = $("#chat_input");
 			    var utterance = inp.val();
 			    inp.val("");
-			    World.send(["broker", 0, [this.nym(), "says", utterance]]);
+			    if (utterance) {
+				World.send(["broker", 0, [this.nym(), "says", utterance]]);
+			    }
 			    break;
 			case "#nym":
 			    World.updateRoutes(this.subscriptions());
@@ -266,11 +312,14 @@ $(document).ready(function () {
 			}
 			break;
 		    case "broker":
-			console.log("Broker message:", e.message[2]);
+			if (e.message[2][1] === "says") {
+			    outputUtterance(e.message[2][0], e.message[2][2]);
+			}
 			break;
 		    default:
 			break;
 		    }
+		    break;
 		}
 	    }
 	});
