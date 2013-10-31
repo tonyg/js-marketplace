@@ -85,6 +85,14 @@ Route.prototype.toJSON = function () {
     return [this.isSubscription ? "sub" : "pub", this.pattern, this.metaLevel, this.level];
 };
 
+Route.fromJSON = function (j) {
+    switch (j[0]) {
+    case "sub": return new Route(true, j[1], j[2], j[3]);
+    case "pub": return new Route(false, j[1], j[2], j[3]);
+    default: throw { message: "Invalid JSON-encoded route: " + JSON.stringify(j) };
+    }
+};
+
 function sub(pattern, metaLevel, level) {
     return new Route(true, pattern, metaLevel, level);
 }
@@ -531,6 +539,43 @@ DemandMatcher.prototype.incorporateChanges = function (isArrivals, routeList) {
 	}
 	if (isArrivals && !peerExists) { this.onDemandIncrease(relevantChanged); }
 	if (!isArrivals && peerExists) { this.onSupplyDecrease(relevantChanged); }
+    }
+};
+
+/*---------------------------------------------------------------------------*/
+/* Utilities: deduplicator */
+
+function Deduplicator(ttl_ms) {
+    this.ttl_ms = ttl_ms || 10000;
+    this.queue = [];
+    this.map = {};
+    this.timerId = null;
+}
+
+Deduplicator.prototype.accept = function (m) {
+    var s = JSON.stringify(m);
+    if (s in this.map) return false;
+    var entry = [(+new Date()) + this.ttl_ms, s, m];
+    this.map[s] = entry;
+    this.queue.push(entry);
+
+    if (this.timerId === null) {
+	var self = this;
+	this.timerId = setInterval(function () { self.expireMessages(); },
+				   this.ttl_ms > 1000 ? 1000 : this.ttl_ms);
+    }
+    return true;
+};
+
+Deduplicator.prototype.expireMessages = function () {
+    var now = +new Date();
+    while (this.queue.length > 0 && this.queue[0][0] <= now) {
+	var entry = this.queue.shift();
+	delete this.map[entry[1]];
+    }
+    if (this.queue.length === 0) {
+	clearInterval(this.timerId);
+	this.timerId = null;
     }
 };
 
