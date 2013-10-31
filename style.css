@@ -1,17 +1,41 @@
-div.utterance span.timestamp {
+span.timestamp {
     color: #d0d0d0;
 }
 
-div.utterance span.timestamp:after {
+span.timestamp:after {
     content: " ";
 }
 
-div.utterance span.nym {
+.utterance span.nym:after {
+    content: ": ";
+}
+
+span.arrived:after {
+    content: " arrived";
+}
+
+span.departed:after {
+    content: " departed";
+}
+
+div.notification {
+    background-color: #eeeeff;
+}
+
+span.state.connected, span.arrived {
     color: #00c000;
 }
 
-div.utterance span.nym:after {
-    content: ": ";
+span.state.disconnected, span.departed {
+    color: #c00000;
+}
+
+div.state_disconnected {
+    background-color: #ffeeee;
+}
+
+div.state_connected {
+    background-color: #eeffee;
 }
 
 #chat_output {
@@ -21,4 +45,20 @@ div.utterance span.nym:after {
 
 #chat_input {
     width: 80%;
+}
+
+.nym {
+    color: #00c000;
+}
+
+.nym_status:before {
+    content: " (";
+}
+
+.nym_status:after {
+    content: ")";
+}
+
+.nym_status {
+    font-size: smaller;
 }

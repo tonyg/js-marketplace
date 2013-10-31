@@ -100,9 +100,15 @@ function WebSocketConnection(label, wsurl, shouldReconnect) {
     this.deduplicator = new Deduplicator();
 }
 
+WebSocketConnection.prototype.statusRoute = function (status) {
+    return pub([this.label + "_state", status]);
+};
+
 WebSocketConnection.prototype.relayRoutes = function () {
     // fresh copy each time, suitable for in-place extension/mutation
-    return [pub([this.label, __, __], 0, 1000), sub([this.label, __, __], 0, 1000)];
+    return [this.statusRoute(this.isConnected() ? "connected" : "disconnected"),
+	    pub([this.label, __, __], 0, 1000),
+	    sub([this.label, __, __], 0, 1000)];
 };
 
 WebSocketConnection.prototype.aggregateRoutes = function () {
@@ -119,7 +125,6 @@ WebSocketConnection.prototype.aggregateRoutes = function () {
 };
 
 WebSocketConnection.prototype.boot = function () {
-    World.updateRoutes(this.aggregateRoutes());
     this.reconnect();
 };
 
@@ -224,6 +229,10 @@ WebSocketConnection.prototype.onmessage = function (wse) {
 WebSocketConnection.prototype.onclose = function (e) {
     var self = this;
     // console.log("onclose", e);
+
+    // Update routes to give clients some indication of the discontinuity
+    World.updateRoutes(this.aggregateRoutes());
+
     if (this.shouldReconnect) {
 	console.log("reconnecting to " + this.wsurl + " in " + this.reconnectDelay + "ms");
 	setTimeout(World.wrap(function () { self.reconnect(); }), this.reconnectDelay);
@@ -238,34 +247,55 @@ WebSocketConnection.prototype.onclose = function (e) {
 ///////////////////////////////////////////////////////////////////////////
 // Main
 
+function outputItem(item) {
+    var stamp = $("<span/>").text((new Date()).toGMTString()).addClass("timestamp");
+    var item = $("<div/>").append([stamp].concat(item));
+    var o = $("#chat_output");
+    o.append(item);
+    o[0].scrollTop = o[0].scrollHeight;
+    return item;
+}
+
 function updateNymList(rs) {
     var nyms = [];
+    var statuses = {};
     for (var i = 0; i < rs.length; i++) {
 	var p = rs[i].pattern;
-	if (p[0] === "broker"
-	    && p[1] === 0
-	    && p[2][1] === "says")
-	{
+	if (p[0] === "broker" && p[1] === 0 && p[2][1] === "says") {
 	    nyms.push(p[2][0]);
 	}
+	if (p[0] === "broker" && p[1] === 0 && p[2][1] === "status") {
+	    statuses[p[2][0]] = p[2][2];
+	}
     }
-    console.log(nyms);
+
+    var container = $("#nymlist");
+    container[0].innerHTML = ""; // remove all children
+    for (var i = 0; i < nyms.length; i++) {
+	var n = $("<span/>").text(nyms[i]).addClass("nym");
+	var s = statuses[nyms[i]];
+	if (s) {
+	    container.append($("<div/>").append([n, $("<span/>").text(s).addClass("nym_status")]));
+	} else {
+	    container.append($("<div/>").append(n));
+	}
+    }
+}
+
+function outputState(state) {
+    outputItem([$("<span/>").text(state).addClass(state).addClass("state")])
+    .addClass("state_" + state);
 }
 
 function outputUtterance(who, what) {
-    var stamp = $("<span/>").text((new Date()).toGMTString()).addClass("timestamp");
-    var nymLabel = $("<span/>").text(who).addClass("nym");
-    var utterance = $("<span/>").text(what).addClass("utterance");
-    var o = $("#chat_output");
-    o.append($("<div/>")
-	     .append([stamp, nymLabel, utterance])
-	     .addClass("utterance"));
-    o[0].scrollTop = o[0].scrollHeight;
+    outputItem([$("<span/>").text(who).addClass("nym"),
+		$("<span/>").text(what).addClass("utterance")]).addClass("utterance");
 }
 
 $(document).ready(function () {
     $("#chat_form").submit(function (e) { e.preventDefault(); return false; });
     $("#nym_form").submit(function (e) { e.preventDefault(); return false; });
+    $("#nym").val("nym" + Math.floor(Math.random() * 65536));
 
     var g = new Ground(function () {
 	console.log('starting ground boot');
@@ -273,20 +303,43 @@ $(document).ready(function () {
 	spawnJQueryDriver();
 	World.spawn(new WebSocketConnection("broker", "ws://localhost:8000/", true));
 	World.spawn({
-	    // step: function () { console.log('dummy step'); },
+	    // Monitor connection, notifying connectivity changes
+	    state: null,
+	    boot: function () {
+		World.updateRoutes([sub(["broker_state", __], 0, 1)]);
+	    },
+	    handleEvent: function (e) {
+		if (e.type === "routes") {
+		    if (e.routes.length > 0) {
+			var newState = e.routes[0].pattern[1];
+			if (this.state != newState) {
+			    outputState(newState);
+			    this.state = newState;
+			}
+		    }
+		}
+	    }
+	});
+	World.spawn({
+	    // Actual chat functionality
+	    peers: new PresenceDetector(),
+	    peerMap: {},
 	    boot: function () {
 		World.updateRoutes(this.subscriptions());
 	    },
-	    nym: function () {
-		return $("#nym").val();
-	    },
+	    nym: function () { return $("#nym").val(); },
+	    currentStatus: function () { return $("#status").val(); },
 	    subscriptions: function () {
 		return [sub(["jQuery", "#send_chat", "click", __]),
 			sub(["jQuery", "#nym", "change", __]),
+			sub(["jQuery", "#status", "change", __]),
 			pub(["broker", 0, [this.nym(), "says", __]]),
-			sub(["broker", 0, [__, "says", __]], 0, 1)];
+			pub(["broker", 0, [this.nym(), "status", this.currentStatus()]]),
+			sub(["broker", 0, [__, "says", __]], 0, 1),
+			sub(["broker", 0, [__, "status", __]], 0, 1)];
 	    },
 	    handleEvent: function (e) {
+		var self = this;
 		switch (e.type) {
 		case "routes":
 		    updateNymList(e.routes);
@@ -304,6 +357,7 @@ $(document).ready(function () {
 			    }
 			    break;
 			case "#nym":
+			case "#status":
 			    World.updateRoutes(this.subscriptions());
 			    break;
 			default:
