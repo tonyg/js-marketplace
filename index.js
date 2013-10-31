@@ -174,12 +174,16 @@ WebSocketConnection.prototype.handleEvent = function (e) {
     }
 };
 
-WebSocketConnection.prototype.reconnect = function () {
-    var self = this;
+WebSocketConnection.prototype.forceclose = function () {
     if (this.sock) {
 	this.sock.close();
 	this.sock = null;
     }
+};
+
+WebSocketConnection.prototype.reconnect = function () {
+    var self = this;
+    this.forceclose();
     this.sock = new WebSocket(this.wsurl);
     this.sock.onopen = World.wrap(function (e) { return self.onopen(e); });
     this.sock.onmessage = World.wrap(function (e) { return self.onmessage(e); });
@@ -301,7 +305,8 @@ $(document).ready(function () {
 	console.log('starting ground boot');
 	// World.spawn(new Spy());
 	spawnJQueryDriver();
-	World.spawn(new WebSocketConnection("broker", "ws://localhost:8000/", true));
+	var wsconn = new WebSocketConnection("broker", $("#wsurl").val(), true);
+	World.spawn(wsconn);
 	World.spawn({
 	    // Monitor connection, notifying connectivity changes
 	    state: null,
@@ -333,6 +338,7 @@ $(document).ready(function () {
 		return [sub(["jQuery", "#send_chat", "click", __]),
 			sub(["jQuery", "#nym", "change", __]),
 			sub(["jQuery", "#status", "change", __]),
+			sub(["jQuery", "#wsurl", "change", __]),
 			pub(["broker", 0, [this.nym(), "says", __]]),
 			pub(["broker", 0, [this.nym(), "status", this.currentStatus()]]),
 			sub(["broker", 0, [__, "says", __]], 0, 1),
@@ -359,6 +365,10 @@ $(document).ready(function () {
 			case "#nym":
 			case "#status":
 			    World.updateRoutes(this.subscriptions());
+			    break;
+			case "#wsurl":
+			    wsconn.forceclose();
+			    wsconn.wsurl = $("#wsurl").val();
 			    break;
 			default:
 			    console.log("Got jquery event from as-yet-unhandled subscription",
