@@ -276,6 +276,14 @@ WebSocketConnection.prototype.onclose = function (e) {
 ///////////////////////////////////////////////////////////////////////////
 // Main
 
+function chatEvent(nym, status, utterance, stamp) {
+    return ["chatEvent", nym, status, utterance, stamp || +(new Date())];
+}
+function chatEventNym(c) { return c[1]; }
+function chatEventStatus(c) { return c[2]; }
+function chatEventUtterance(c) { return c[3]; }
+function chatEventStamp(c) { return c[4]; }
+
 function outputItem(item) {
     var stamp = $("<span/>").text((new Date()).toGMTString()).addClass("timestamp");
     var item = $("<div/>").append([stamp].concat(item));
@@ -286,17 +294,16 @@ function outputItem(item) {
 }
 
 function updateNymList(rs) {
-    var nyms = [];
     var statuses = {};
     for (var i = 0; i < rs.length; i++) {
 	var p = rs[i].pattern;
-	if (p[0] === "broker" && p[1] === 0 && p[2][1] === "says") {
-	    nyms.push(p[2][0]);
-	}
-	if (p[0] === "broker" && p[1] === 0 && p[2][1] === "status") {
-	    statuses[p[2][0]] = p[2][2];
+	if (p[0] === "broker" && p[1] === 0 && p[2][0] === "chatEvent") {
+	    statuses[chatEventNym(p[2])] = chatEventStatus(p[2]);
 	}
     }
+    var nyms = [];
+    for (var nym in statuses) { nyms.push(nym); }
+    nyms.sort();
 
     var container = $("#nymlist");
     container[0].innerHTML = ""; // remove all children
@@ -367,10 +374,8 @@ $(document).ready(function () {
 			sub(["jQuery", "#nym", "change", __]),
 			sub(["jQuery", "#status", "change", __]),
 			sub(["jQuery", "#wsurl", "change", __]),
-			pub(["broker", 0, [this.nym(), "says", __]]),
-			pub(["broker", 0, [this.nym(), "status", this.currentStatus()]]),
-			sub(["broker", 0, [__, "says", __]], 0, 1),
-			sub(["broker", 0, [__, "status", __]], 0, 1)];
+			pub(["broker", 0, chatEvent(this.nym(), this.currentStatus(), __, __)]),
+			sub(["broker", 0, chatEvent(__, __, __, __)], 0, 1)];
 	    },
 	    handleEvent: function (e) {
 		var self = this;
@@ -391,7 +396,9 @@ $(document).ready(function () {
 			    var utterance = inp.val();
 			    inp.val("");
 			    if (utterance) {
-				World.send(["broker", 0, [this.nym(), "says", utterance]]);
+				World.send(["broker", 0, chatEvent(this.nym(),
+								   this.currentStatus(),
+								   utterance)]);
 			    }
 			    break;
 			case "#nym":
@@ -408,8 +415,9 @@ $(document).ready(function () {
 			}
 			break;
 		    case "broker":
-			if (e.message[2][1] === "says") {
-			    outputUtterance(e.message[2][0], e.message[2][2]);
+			if (e.message[2][0] === "chatEvent") {
+			    outputUtterance(chatEventNym(e.message[2]),
+					    chatEventUtterance(e.message[2]));
 			}
 			break;
 		    default:
