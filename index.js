@@ -296,12 +296,13 @@ function outputUtterance(who, what) {
 		$("<span/>").text(what).addClass("utterance")]).addClass("utterance");
 }
 
+var G;
 $(document).ready(function () {
     $("#chat_form").submit(function (e) { e.preventDefault(); return false; });
     $("#nym_form").submit(function (e) { e.preventDefault(); return false; });
     if (!($("#nym").val())) { $("#nym").val("nym" + Math.floor(Math.random() * 65536)); }
 
-    var g = new Ground(function () {
+    G = new Ground(function () {
 	console.log('starting ground boot');
 	// World.spawn(new Spy());
 	spawnJQueryDriver();
@@ -388,5 +389,5 @@ $(document).ready(function () {
 	    }
 	});
     });
-    g.startStepping();
+    G.startStepping();
 });
