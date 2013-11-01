@@ -299,7 +299,7 @@ function outputUtterance(who, what) {
 $(document).ready(function () {
     $("#chat_form").submit(function (e) { e.preventDefault(); return false; });
     $("#nym_form").submit(function (e) { e.preventDefault(); return false; });
-    $("#nym").val("nym" + Math.floor(Math.random() * 65536));
+    if (!($("#nym").val())) { $("#nym").val("nym" + Math.floor(Math.random() * 65536)); }
 
     var g = new Ground(function () {
 	console.log('starting ground boot');
