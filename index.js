@@ -83,6 +83,35 @@ JQueryEventRouter.prototype.handleEvent = function (e) {
 };
 
 ///////////////////////////////////////////////////////////////////////////
+// Wake detector - notices when something (such as
+// suspension/sleeping!) has caused periodic activities to be
+// interrupted, and warns others about it
+// Inspired by http://blog.alexmaccaw.com/javascript-wake-event
+
+function WakeDetector(period) {
+    this.message = "wake";
+    this.period = period || 10000;
+    this.mostRecentTrigger = +(new Date());
+    this.timerId = null;
+}
+
+WakeDetector.prototype.boot = function () {
+    var self = this;
+    World.updateRoutes([pub(this.message)]);
+    this.timerId = setInterval(World.wrap(function () { self.trigger(); }), this.period);
+};
+
+WakeDetector.prototype.handleEvent = function (e) {};
+
+WakeDetector.prototype.trigger = function () {
+    var now = +(new Date());
+    if (now - this.mostRecentTrigger > this.period * 1.5) {
+	World.send(this.message);
+    }
+    this.mostRecentTrigger = now;
+};
+
+///////////////////////////////////////////////////////////////////////////
 // WebSocket client driver
 
 var DEFAULT_RECONNECT_DELAY = 100;
@@ -176,6 +205,7 @@ WebSocketConnection.prototype.handleEvent = function (e) {
 
 WebSocketConnection.prototype.forceclose = function () {
     if (this.sock) {
+	console.log("WebSocketConnection.forceclose called");
 	this.sock.close();
 	this.sock = null;
     }
@@ -306,6 +336,7 @@ $(document).ready(function () {
 	console.log('starting ground boot');
 	// World.spawn(new Spy());
 	spawnJQueryDriver();
+	World.spawn(new WakeDetector());
 	var wsconn = new WebSocketConnection("broker", $("#wsurl").val(), true);
 	World.spawn(wsconn);
 	World.spawn({
@@ -336,7 +367,8 @@ $(document).ready(function () {
 	    nym: function () { return $("#nym").val(); },
 	    currentStatus: function () { return $("#status").val(); },
 	    subscriptions: function () {
-		return [sub(["jQuery", "#send_chat", "click", __]),
+		return [sub("wake"),
+			sub(["jQuery", "#send_chat", "click", __]),
 			sub(["jQuery", "#nym", "change", __]),
 			sub(["jQuery", "#status", "change", __]),
 			sub(["jQuery", "#wsurl", "change", __]),
@@ -352,6 +384,10 @@ $(document).ready(function () {
 		    updateNymList(e.routes);
 		    break;
 		case "message":
+		    if (e.message === "wake") {
+			wsconn.forceclose();
+			return;
+		    }
 		    switch (e.message[0]) {
 		    case "jQuery":
 			switch (e.message[1])  {
