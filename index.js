@@ -232,7 +232,7 @@ WebSocketConnection.prototype.onmessage = function (wse) {
 
 WebSocketConnection.prototype.onclose = function (e) {
     var self = this;
-    // console.log("onclose", e);
+    console.log("onclose", e);
 
     // Update routes to give clients some indication of the discontinuity
     World.updateRoutes(this.aggregateRoutes());
