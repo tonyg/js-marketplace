@@ -229,20 +229,6 @@ WebSocketConnection.prototype.onopen = function (e) {
     this.sendLocalRoutes();
 };
 
-function subtractRoutes(rs1, rs2) {
-    var toRemove = ({});
-    for (var i = 0; i < rs2.length; i++) {
-	toRemove[rs2[i].toJSON()] = true;
-    }
-    var result = [];
-    for (var i = 0; i < rs1.length; i++) {
-	if (!(rs1[i].toJSON() in toRemove)) {
-	    result.push(rs1[i]);
-	}
-    }
-    return result;
-};
-
 WebSocketConnection.prototype.onmessage = function (wse) {
     // console.log("onmessage", wse);
     var j = JSON.parse(wse.data);
@@ -251,7 +237,7 @@ WebSocketConnection.prototype.onmessage = function (wse) {
     case "routes":
 	if (this.prevPeerRoutesMessage !== wse.data) {
 	    this.prevPeerRoutesMessage = wse.data;
-	    this.peerRoutes = subtractRoutes(e.routes, this.localRoutes);
+	    this.peerRoutes = e.routes;
 	    World.updateRoutes(this.aggregateRoutes());
 	}
 	break;
