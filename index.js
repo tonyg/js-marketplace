@@ -203,7 +203,10 @@ WebSocketConnection.prototype.handleEvent = function (e) {
     }
 };
 
-WebSocketConnection.prototype.forceclose = function () {
+WebSocketConnection.prototype.forceclose = function (keepReconnectDelay) {
+    if (!keepReconnectDelay) {
+	this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
+    }
     if (this.sock) {
 	console.log("WebSocketConnection.forceclose called");
 	this.sock.close();
@@ -213,7 +216,7 @@ WebSocketConnection.prototype.forceclose = function () {
 
 WebSocketConnection.prototype.reconnect = function () {
     var self = this;
-    this.forceclose();
+    this.forceclose(true);
     this.sock = new WebSocket(this.wsurl);
     this.sock.onopen = World.wrap(function (e) { return self.onopen(e); });
     this.sock.onmessage = World.wrap(function (e) { return self.onmessage(e); });
