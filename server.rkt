@@ -1,6 +1,7 @@
 #lang minimart
 
 (require net/rfc6455)
+(require minimart/drivers/timer)
 (require minimart/drivers/websocket)
 (require minimart/demand-matcher)
 (require minimart/pattern)
@@ -9,13 +10,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main: start WebSocket server
 
-;; (ws-idle-timeout 3) ;; TODO: deal with reconnects, and then remove
 (log-events-and-actions? #f)
 
-(spawn-websocket-driver)
+(define ping-interval (* 1000 (max (- (ws-idle-timeout) 10) (* (ws-idle-timeout) 0.8))))
 
 (define any-client (websocket-remote-client ?))
 (define server-id (websocket-server 8000))
+
+(spawn-timer-driver)
+(spawn-websocket-driver)
 
 (spawn-world
  (spawn-demand-matcher (websocket-message any-client server-id ?)
@@ -42,6 +45,8 @@
 
 (define (drop-json-action j)
   (match j
+    ["ping" 'ping]
+    ["pong" 'pong]
     [`("routes" ,routes) (routing-update (map drop-json-route routes))]
     [`("message" ,body ,meta-level ,feedback?) (message body meta-level feedback?)]))
 
@@ -54,6 +59,8 @@
 
 (define (lift-json-event j)
   (match j
+    ['ping "ping"]
+    ['pong "pong"]
     [(routing-update rs) `("routes" ,(map lift-json-route rs))]
     [(message body meta-level feedback?) `("message" ,body ,meta-level ,feedback?)]))
 
@@ -87,7 +94,8 @@
 
 (define (spawn-connection-handler c)
   (define relay-connections
-    (list (sub (websocket-message c server-id ?) #:meta-level 1)
+    (list (sub (timer-expired c ?) #:meta-level 1)
+	  (sub (websocket-message c server-id ?) #:meta-level 1)
 	  (sub (websocket-message c server-id ?) #:meta-level 1 #:level 1)
 	  (pub (websocket-message server-id c ?) #:meta-level 1)))
   (define (connection-handler e s)
@@ -98,18 +106,28 @@
 	(handle-connection-routing-change (intersect-routes rs relay-connections))
 	(handle-tunnelled-routing-change
 	 (intersect-routes rs (connection-state-tunnelled-routes s))))]
-      [(and wsm (message (websocket-message from to data) 1 #f))
-       (sequence-transitions
-	(match (drop-json-action (string->jsexpr data))
-	  [(routing-update rs)
-	   (transition (struct-copy connection-state s [tunnelled-routes rs])
-		       (routing-update (append rs relay-connections)))]
-	  [(? message? m)
-	   (transition s m)])
-	(handle-tunnellable-message wsm))]
       [(? message? m)
-       ((handle-tunnellable-message m) s)]
+       (sequence-transitions
+	(match m
+	  [(message (websocket-message from to data) 1 #f)
+	   (match (drop-json-action (string->jsexpr data))
+	     [(routing-update rs)
+	      (transition (struct-copy connection-state s [tunnelled-routes rs])
+			  (routing-update (append rs relay-connections)))]
+	     [(? message? m)
+	      (transition s m)]
+	     ['ping
+	      (transition s (send-event 'pong s))]
+	     ['pong
+	      (transition s '())])]
+	  [(message (timer-expired _ _) 1 #f)
+	   (transition s (list (send (set-timer c ping-interval 'relative) #:meta-level 1)
+			       (send-event 'ping s)))]
+	  [_
+	   (transition s '())])
+	(handle-tunnellable-message m))]
       [#f #f]))
-  (spawn connection-handler
-	 (connection-state c '())
-	 relay-connections))
+  (list (send (set-timer c ping-interval 'relative) #:meta-level 1)
+	(spawn connection-handler
+	       (connection-state c '())
+	       relay-connections)))

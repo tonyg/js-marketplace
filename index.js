@@ -231,7 +231,13 @@ WebSocketConnection.prototype.onopen = function (e) {
 
 WebSocketConnection.prototype.onmessage = function (wse) {
     // console.log("onmessage", wse);
+
     var j = JSON.parse(wse.data);
+    if (j === "ping") {
+	this.sock.send(JSON.stringify("pong"));
+	return;
+    }
+
     var e = decodeAction(j);
     switch (e.type) {
     case "routes":
