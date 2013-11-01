@@ -149,7 +149,7 @@ WebSocketConnection.prototype.aggregateRoutes = function () {
 			  r.metaLevel,
 			  r.level));
     }
-    // console.log("WebSocketConnection", this.label, rs);
+    // console.log("WebSocketConnection.aggregateRoutes", this.label, rs);
     return rs;
 };
 
@@ -221,7 +221,7 @@ WebSocketConnection.prototype.reconnect = function () {
 };
 
 WebSocketConnection.prototype.onopen = function (e) {
-    // console.log("onopen", e);
+    console.log("connected to " + this.sock.url);
     this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
     this.sendLocalRoutes();
 };
