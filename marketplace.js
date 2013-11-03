@@ -191,7 +191,7 @@ function World(bootFn) {
     this.processActions = [];
     this.activePid = null;
     this.stepperId = null;
-    this.asChild(-1, bootFn);
+    this.asChild(-1, bootFn, true);
 }
 
 /* Class state / methods */
@@ -285,7 +285,12 @@ World.prototype.stopStepping = function () {
     }
 };
 
-World.prototype.asChild = function (pid, f) {
+World.prototype.asChild = function (pid, f, omitLivenessCheck) {
+    if (!(pid in this.processTable) && !omitLivenessCheck) {
+	console.warn("World.asChild eliding invocation of dead process", pid);
+	return;
+    }
+
     World.stack.push(this);
     var result = null;
     this.activePid = pid;
