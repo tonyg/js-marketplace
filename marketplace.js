@@ -312,6 +312,10 @@ World.prototype.kill = function (pid, exn) {
     } else {
 	console.log("Process exited", pid, exn);
     }
+    var p = this.processTable[pid];
+    if (p && p.behavior.trapexit) {
+	this.asChild(pid, function () { return p.behavior.trapexit(exn); });
+    }
     delete this.processTable[pid];
     this.issueRoutingUpdate();
 };
