@@ -351,18 +351,16 @@ $(document).ready(function () {
 	World.spawn(wsconn);
 	World.spawn({
 	    // Monitor connection, notifying connectivity changes
-	    state: null,
+	    state: "crashed", // start with this to avoid spurious initial message print
 	    boot: function () {
 		World.updateRoutes([sub(["broker_state", __], 0, 1)]);
 	    },
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
-		    if (e.routes.length > 0) {
-			var newState = e.routes[0].pattern[1];
-			if (this.state != newState) {
-			    outputState(newState);
-			    this.state = newState;
-			}
+		    var newState = (e.routes.length > 0) ? e.routes[0].pattern[1] : "crashed";
+		    if (this.state != newState) {
+			outputState(newState);
+			this.state = newState;
 		    }
 		}
 	    }

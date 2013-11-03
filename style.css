@@ -30,6 +30,15 @@ span.state.disconnected, span.departed {
     color: #c00000;
 }
 
+span.state.crashed {
+    color: white;
+    background: red;
+}
+
+span.state.crashed:after {
+    content: "; please reload the page";
+}
+
 div.state_disconnected {
     background-color: #ffeeee;
 }
