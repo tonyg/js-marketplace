@@ -157,14 +157,24 @@ WebSocketConnection.prototype.boot = function () {
     this.reconnect();
 };
 
+WebSocketConnection.prototype.trapexit = function () {
+    this.forceclose();
+};
+
 WebSocketConnection.prototype.isConnected = function () {
     return this.sock && this.sock.readyState === this.sock.OPEN;
-}
+};
+
+WebSocketConnection.prototype.safeSend = function (m) {
+    try {
+	if (this.isConnected()) { this.sock.send(m); }
+    } catch (e) {
+	console.warn("Trapped exn while sending", e);
+    }
+};
 
 WebSocketConnection.prototype.sendLocalRoutes = function () {
-    if (this.isConnected()) {
-	this.sock.send(JSON.stringify(encodeEvent(updateRoutes(this.localRoutes))));
-    }
+    this.safeSend(JSON.stringify(encodeEvent(updateRoutes(this.localRoutes))));
 };
 
 WebSocketConnection.prototype.handleEvent = function (e) {
@@ -192,11 +202,9 @@ WebSocketConnection.prototype.handleEvent = function (e) {
 	    && m[0] === this.label
 	    && typeof(m[1]) === "number")
 	{
-	    if (this.isConnected()) {
-		var encoded = JSON.stringify(encodeEvent(sendMessage(m[2], m[1], e.isFeedback)));
-		if (this.deduplicator.accept(encoded)) {
-		    this.sock.send(encoded);
-		}
+	    var encoded = JSON.stringify(encodeEvent(sendMessage(m[2], m[1], e.isFeedback)));
+	    if (this.deduplicator.accept(encoded)) {
+		this.safeSend(encoded);
 	    }
 	}
 	break;
@@ -234,7 +242,7 @@ WebSocketConnection.prototype.onmessage = function (wse) {
 
     var j = JSON.parse(wse.data);
     if (j === "ping") {
-	this.sock.send(JSON.stringify("pong"));
+	this.safeSend(JSON.stringify("pong"));
 	return;
     }
 
