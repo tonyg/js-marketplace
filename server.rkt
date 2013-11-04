@@ -111,11 +111,12 @@
 	(match m
 	  [(message (websocket-message from to data) 1 #f)
 	   (match (drop-json-action (string->jsexpr data))
-	     [(routing-update rs)
+	     [(routing-update rs-unfiltered)
+	      (define rs (filter (lambda (r) (zero? (route-meta-level r))) rs-unfiltered))
 	      (transition (struct-copy connection-state s [tunnelled-routes rs])
 			  (routing-update (append rs relay-connections)))]
 	     [(? message? m)
-	      (transition s m)]
+	      (transition s (if (zero? (message-meta-level m)) m '()))]
 	     ['ping
 	      (transition s (send-event 'pong s))]
 	     ['pong
