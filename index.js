@@ -116,6 +116,8 @@ WakeDetector.prototype.trigger = function () {
 
 var DEFAULT_RECONNECT_DELAY = 100;
 var MAX_RECONNECT_DELAY = 30000;
+var DEFAULT_IDLE_TIMEOUT = 300000; // 5 minutes
+var DEFAULT_PING_INTERVAL = DEFAULT_IDLE_TIMEOUT - 10000;
 
 function WebSocketConnection(label, wsurl, shouldReconnect) {
     this.label = label;
@@ -127,7 +129,28 @@ function WebSocketConnection(label, wsurl, shouldReconnect) {
     this.prevPeerRoutesMessage = null;
     this.sock = null;
     this.deduplicator = new Deduplicator();
+
+    this.activityTimestamp = 0;
+    this.idleTimeout = DEFAULT_IDLE_TIMEOUT;
+    this.pingInterval = DEFAULT_PING_INTERVAL;
+    this.idleTimer = null;
+    this.pingTimer = null;
 }
+
+WebSocketConnection.prototype.clearHeartbeatTimers = function () {
+    if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
+    if (this.pingTimer) { clearTimeout(this.pingTimer); this.pingTimer = null; }
+};
+
+WebSocketConnection.prototype.recordActivity = function () {
+    var self = this;
+    this.activityTimestamp = +(new Date());
+    this.clearHeartbeatTimers();
+    this.idleTimer = setTimeout(function () { self.forceclose(); },
+				this.idleTimeout);
+    this.pingTimer = setTimeout(function () { self.safeSend(JSON.stringify("ping")) },
+				this.pingInterval);
+};
 
 WebSocketConnection.prototype.statusRoute = function (status) {
     return pub([this.label + "_state", status]);
@@ -215,6 +238,7 @@ WebSocketConnection.prototype.forceclose = function (keepReconnectDelay) {
     if (!keepReconnectDelay) {
 	this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
     }
+    this.clearHeartbeatTimers();
     if (this.sock) {
 	console.log("WebSocketConnection.forceclose called");
 	this.sock.close();
@@ -239,11 +263,14 @@ WebSocketConnection.prototype.onopen = function (e) {
 
 WebSocketConnection.prototype.onmessage = function (wse) {
     // console.log("onmessage", wse);
+    this.recordActivity();
 
     var j = JSON.parse(wse.data);
     if (j === "ping") {
 	this.safeSend(JSON.stringify("pong"));
 	return;
+    } else if (j === "pong") {
+	return; // recordActivity already took care of our timers
     }
 
     var e = decodeAction(j);
