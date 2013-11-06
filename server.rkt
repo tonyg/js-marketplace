@@ -14,20 +14,22 @@
 
 (define ping-interval (* 1000 (max (- (ws-idle-timeout) 10) (* (ws-idle-timeout) 0.8))))
 
-(define any-client (websocket-remote-client ?))
-(define server-id (websocket-server 8000))
-
 (spawn-timer-driver)
 (spawn-websocket-driver)
 
+(define (spawn-server-listener port ssl-options)
+  (define server-id (websocket-server port ssl-options))
+  (spawn-demand-matcher (websocket-message (websocket-remote-client ?) server-id ?)
+			#:meta-level 1
+			#:demand-is-subscription? #f
+			(match-lambda ;; arrived-demand-route, i.e. new connection publisher
+			 [(route _ (websocket-message c _ _) 1 _)
+			  (spawn-connection-handler c server-id)]
+			 [_ '()])))
+
 (spawn-world
- (spawn-demand-matcher (websocket-message any-client server-id ?)
-		       #:meta-level 1
-		       #:demand-is-subscription? #f
-		       (match-lambda ;; arrived-demand-route, i.e. new connection publisher
-			[(route _ (websocket-message c _ _) 1 _)
-			 (spawn-connection-handler c)]
-			[_ '()])))
+ (spawn-server-listener 8000 #f)
+ (spawn-server-listener 8443 (websocket-ssl-options "server-cert.pem" "private-key.pem")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Wire protocol representation of events and actions
@@ -73,26 +75,22 @@
 
 (struct connection-state (client-id tunnelled-routes) #:transparent)
 
-(define (send-event e s)
-  (send (websocket-message server-id
-			   (connection-state-client-id s)
-			   (jsexpr->string (lift-json-event e)))
-	#:meta-level 1))
-
-(define ((handle-connection-routing-change rs) s)
-  (match rs
-    ['() (transition s (quit))] ;; websocket connection closed
-    [_ (transition s '())]))
-
-(define ((handle-tunnelled-routing-change rs) s)
-  (transition s (send-event (routing-update rs) s)))
-
-(define ((handle-tunnellable-message m) s)
-  (if (ormap (lambda (r) (route-accepts? r m)) (connection-state-tunnelled-routes s))
-      (transition s (send-event m s))
-      (transition s '())))
-
-(define (spawn-connection-handler c)
+(define (spawn-connection-handler c server-id)
+  (define (send-event e s)
+    (send (websocket-message server-id
+			     (connection-state-client-id s)
+			     (jsexpr->string (lift-json-event e)))
+	  #:meta-level 1))
+  (define ((handle-connection-routing-change rs) s)
+    (match rs
+      ['() (transition s (quit))] ;; websocket connection closed
+      [_ (transition s '())]))
+  (define ((handle-tunnelled-routing-change rs) s)
+    (transition s (send-event (routing-update rs) s)))
+  (define ((handle-tunnellable-message m) s)
+    (if (ormap (lambda (r) (route-accepts? r m)) (connection-state-tunnelled-routes s))
+	(transition s (send-event m s))
+	(transition s '())))
   (define relay-connections
     (list (sub (timer-expired c ?) #:meta-level 1)
 	  (sub (websocket-message c server-id ?) #:meta-level 1)
