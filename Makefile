@@ -1,6 +1,10 @@
 APP_NAME=MarketplaceChat.app
 LIB_SOURCES=\
-	marketplace.js
+	marketplace.js \
+	spy.js \
+	jquery-driver.js \
+	wake-detector.js \
+	websocket-driver.js
 APP_SOURCES=\
 	examples/chat/index.html \
 	examples/chat/index.js \
