@@ -16,13 +16,15 @@ function JQueryEventRouter(selector, eventName) {
     var self = this;
     this.selector = selector;
     this.eventName = eventName;
+    this.preventDefault = (this.eventName.charAt(0) !== "+");
     this.handler =
 	World.wrap(function (e) {
 	    World.send(["jQuery", self.selector, self.eventName, e]);
-	    e.preventDefault();
-	    return false;
+	    if (self.preventDefault) e.preventDefault();
+	    return !self.preventDefault;
 	});
-    $(this.selector).on(this.eventName, this.handler);
+    $(this.selector).on(this.preventDefault ? this.eventName : this.eventName.substring(1),
+			this.handler);
 }
 
 JQueryEventRouter.prototype.handleEvent = function (e) {
