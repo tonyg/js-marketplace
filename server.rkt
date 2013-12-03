@@ -1,4 +1,5 @@
 #lang minimart
+;; Generic broker for WebSockets-based minimart/marketplace communication.
 
 (require net/rfc6455)
 (require minimart/drivers/timer)

@@ -1,6 +1,11 @@
 APP_NAME=MarketplaceChat.app
-APP_SOURCES=index.html index.js marketplace.js style.css
-RESOURCES=$(wildcard app-resources/*)
+LIB_SOURCES=\
+	marketplace.js
+APP_SOURCES=\
+	examples/chat/index.html \
+	examples/chat/index.js \
+	examples/chat/style.css
+RESOURCES=$(wildcard examples/chat/app-resources/*)
 
 all: $(APP_NAME).zip
 
@@ -22,17 +27,18 @@ clean-keys:
 $(APP_NAME).zip: $(APP_NAME)
 	zip -r $@ $<
 
-$(APP_NAME): $(APP_SOURCES)
+$(APP_NAME): $(APP_SOURCES) $(LIB_SOURCES)
 	echo RESOURCES $(RESOURCES)
 	rm -rf $@
 	mkdir -p $@/Contents/MacOS
 	mkdir -p $@/Contents/Resources
-	cp app-resources/Info.plist $@/Contents
-	cp app-resources/boot.sh $@/Contents/MacOS
-	cp app-resources/app.icns $@/Contents/Resources
-	cp -r bootstrap $@/Contents/Resources
-	cp jquery*js $@/Contents/Resources
-	cp $(APP_SOURCES) $@/Contents/Resources
+	cp examples/chat/app-resources/Info.plist $@/Contents
+	cp examples/chat/app-resources/boot.sh $@/Contents/MacOS
+	cp examples/chat/app-resources/app.icns $@/Contents/Resources
+	cp -r third-party $@/Contents/Resources
+	cp $(LIB_SOURCES) $@/Contents/Resources
+	mkdir -p $@/Contents/Resources/examples/chat
+	cp $(APP_SOURCES) $@/Contents/Resources/examples/chat
 	chmod a+x $@/Contents/MacOS/boot.sh
 
 clean:
