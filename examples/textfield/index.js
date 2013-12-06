@@ -12,7 +12,7 @@ function piece(text, pos, lo, hi, cls) {
 function spawnGui() {
     World.spawn({
 	boot: function () {
-	    World.updateRoutes([sub(["jQuery", "#inputRow", "keypress", __]),
+	    World.updateRoutes([sub(["jQuery", "#inputRow", "+keypress", __]),
 				sub(["fieldContents", __, __], 0, 1),
 				sub(["highlight", __], 0, 1)]);
 	},
@@ -44,6 +44,8 @@ function spawnGui() {
 			World.send(["fieldCommand", "cursorLeft"]);
 		    } else if (keycode === 39 /* right */) {
 			World.send(["fieldCommand", "cursorRight"]);
+		    } else if (keycode === 9 /* tab */) {
+			// ignore
 		    } else if (keycode === 8 /* backspace */) {
 			World.send(["fieldCommand", "backspace"]);
 		    } else if (character) {
@@ -112,8 +114,7 @@ function spawnSearch() {
 	    World.updateRoutes(this.subscriptions());
 	},
 	subscriptions: function () {
-	    return [sub(["jQuery", "#searchBox", "+keypress", __]),
-		    sub(["jQuery", "#searchBox", "change", __]),
+	    return [sub(["jQuery", "#searchBox", "input", __]),
 		    sub(["fieldContents", __, __], 0, 1),
 		    pub(["highlight", this.highlight])];
 	},
@@ -142,7 +143,7 @@ function spawnSearch() {
 		this.search();
 		break;
 	    case "message":
-		if (e.message[0] === "jQuery") { // it's a search box change or keypress
+		if (e.message[0] === "jQuery") { // it's a search box input event
 		    this.search();
 		}
 	    }
