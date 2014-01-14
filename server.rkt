@@ -19,7 +19,7 @@
 (spawn-websocket-driver)
 
 (define (spawn-server-listener port ssl-options)
-  (define server-id (websocket-server port ssl-options))
+  (define server-id (websocket-local-server port ssl-options))
   (spawn-demand-matcher (websocket-message (websocket-remote-client ?) server-id ?)
 			#:meta-level 1
 			#:demand-is-subscription? #f
