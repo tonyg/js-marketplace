@@ -118,6 +118,10 @@ function sendMessage(m, metaLevel, isFeedback) {
 	     isFeedback: (isFeedback === undefined) ? false : isFeedback };
 }
 
+function shutdownWorld() {
+    return { type: "shutdownWorld" };
+}
+
 /*---------------------------------------------------------------------------*/
 /* Metafunctions */
 
@@ -216,6 +220,10 @@ World.spawn = function (behavior, initialRoutes) {
 
 World.exit = function (exn) {
     World.current().killActive(exn);
+};
+
+World.shutdownWorld = function () {
+    World.current().enqueueAction(shutdownWorld());
 };
 
 World.withWorldStack = function (stack, f) {
@@ -372,6 +380,9 @@ World.prototype.performAction = function (pid, action) {
 	} else {
 	    World.send(action.message, action.metaLevel - 1, action.isFeedback);
 	}
+	break;
+    case "shutdownWorld":
+	World.exit();
 	break;
     default:
 	throw { message: "Action type " + action.type + " not understood",
