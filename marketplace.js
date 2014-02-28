@@ -491,11 +491,11 @@ PresenceDetector.prototype.presenceExistsFor = function (probeRoute) {
 /* Utilities: matching demand for some service */
 
 function DemandMatcher(pattern, metaLevel, options) {
-    options = $.extend(options, {
+    options = $.extend({
 	demandLevel: 0,
 	supplyLevel: 0,
 	demandSideIsSubscription: true
-    });
+    }, options);
     this.pattern = pattern;
     this.metaLevel = metaLevel;
     this.demandLevel = options.demandLevel;
