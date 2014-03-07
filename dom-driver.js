@@ -61,7 +61,13 @@ DOMFragment.prototype.interpretSpec = function (spec) {
 	var attrs = hasAttrs ? spec[1] : {};
 	var kidIndex = hasAttrs ? 2 : 1;
 
+	// Wow! Such XSS! Many hacks! So vulnerability! Amaze!
 	var n = document.createElement(tagName);
+	for (var attr in attrs) {
+	    if (attrs.hasOwnProperty(attr)) {
+		n.setAttribute(attr, attrs[attr]);
+	    }
+	}
 	for (var i = kidIndex; i < spec.length; i++) {
 	    n.appendChild(this.interpretSpec(spec[i]));
 	}

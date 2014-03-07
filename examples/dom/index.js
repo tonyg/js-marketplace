@@ -12,7 +12,7 @@ $(document).ready(function () {
 		}
 	    }
 	}, [pub(["DOM", "#clicker-holder", "clicker",
-		 ["button", "Click me!"]]),
+		 ["button", ["span", {"style": "font-style: italic"}, "Click me!"]]]),
 	    pub("bump_count"),
 	    sub(["jQuery", "button.clicker", "click", __])]);
 
