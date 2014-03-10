@@ -85,6 +85,13 @@ Route.prototype.toJSON = function () {
     return [this.isSubscription ? "sub" : "pub", this.pattern, this.metaLevel, this.level];
 };
 
+Route.prototype.visibilityToRoute = function (other, overrideOtherLevel) {
+    if (!this.isSubscription !== other.isSubscription) return undefined;
+    if (this.metaLevel !== other.metaLevel) return undefined;
+    if (this.level >= (overrideOtherLevel || other.level)) return undefined;
+    return unify(this.pattern, other.pattern); // returns undefined if unification fails
+};
+
 Route.fromJSON = function (j) {
     switch (j[0]) {
     case "sub": return new Route(true, j[1], j[2], j[3]);
@@ -142,21 +149,16 @@ function liftRoutes(routes) {
     return result;
 }
 
-function intersectRoutes(rs1, rs2, ignoreLevels) {
+function intersectRoutes(rs1, rs2) {
     var result = [];
     for (var i = 0; i < rs1.length; i++) {
 	for (var j = 0; j < rs2.length; j++) {
 	    var ri = rs1[i];
 	    var rj = rs2[j];
-	    if (ri.isSubscription === !rj.isSubscription
-		&& ri.metaLevel === rj.metaLevel
-		&& (ignoreLevels || (ri.level < rj.level)))
-	    {
-		var u = unify(ri.pattern, rj.pattern);
-		if (u) {
-		    var rk = new Route(ri.isSubscription, u.result, ri.metaLevel, ri.level);
-		    result.push(rk);
-		}
+	    var u = ri.visibilityToRoute(rj);
+	    if (u) {
+		var rk = new Route(ri.isSubscription, u.result, ri.metaLevel, ri.level);
+		result.push(rk);
 	    }
 	}
     }
@@ -476,10 +478,8 @@ PresenceDetector.prototype.handleRoutes = function (routes) {
 PresenceDetector.prototype.presenceExistsFor = function (probeRoute) {
     for (var k in this.state) {
 	var existingRoute = this.state[k];
-	if (probeRoute.isSubscription === !existingRoute.isSubscription
-	    && probeRoute.metaLevel === existingRoute.metaLevel
-	    && probeRoute.level === existingRoute.level
-	    && unify(probeRoute.pattern, existingRoute.pattern))
+	if (existingRoute.visibleToRoute(probeRoute, Infinity) &&
+	    (existingRoute.level === probeRoute.level))
 	{
 	    return true;
 	}
