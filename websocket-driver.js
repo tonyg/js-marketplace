@@ -55,6 +55,13 @@ WebSocketConnection.prototype.aggregateRoutes = function () {
     for (var i = 0; i < this.peerRoutes.length; i++) {
 	var r = this.peerRoutes[i];
 	rs.push(new Route(r.isSubscription,
+			  // TODO: This is a horrible syntactic hack
+			  // (in conjunction with the numberness-test
+			  // in handleEvent's routes handler) for
+			  // distinguishing routes published on behalf
+			  // of the remote side from those published
+			  // by the local side. See (**HACK**) mark
+			  // below.
 			  [this.label, __, r.pattern],
 			  r.metaLevel,
 			  r.level));
@@ -96,6 +103,12 @@ WebSocketConnection.prototype.handleEvent = function (e) {
 	    var r = e.routes[i];
 	    if (r.pattern.length && r.pattern.length === 3
 		&& r.pattern[0] === this.label
+		// TODO: This is a horrible syntactic hack (in
+		// conjunction with the use of __ in in
+		// aggregateRoutes) for distinguishing routes
+		// published on behalf of the remote side from those
+		// published by the local side. See (**HACK**) mark
+		// above.
 		&& typeof(r.pattern[1]) === "number")
 	    {
 		this.localRoutes.push(new Route(r.isSubscription,
