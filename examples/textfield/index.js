@@ -158,6 +158,9 @@ var G;
 $(document).ready(function () {
     G = new Ground(function () {
 	spawnJQueryDriver();
+	spawnDOMDriver();
+	spawnRoutingTableWidget("#spy-holder", "spy");
+
 	spawnGui();
 	spawnModel();
 	spawnSearch();
