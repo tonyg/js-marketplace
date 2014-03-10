@@ -22,19 +22,22 @@ function DOMFragment(selector, fragmentClass, fragmentSpec) {
 
 DOMFragment.prototype.boot = function () {
     var self = this;
+    var monitoring = sub(["DOM", self.selector, self.fragmentClass, self.fragmentSpec], 1, 2);
     World.spawn(new World(function () {
 	spawnJQueryDriver(self.selector+" > ."+self.fragmentClass, 1);
 	World.spawn({
-	    maxRouteCount: 0,
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
-		    this.maxRouteCount = Math.max(this.maxRouteCount, e.routes.length);
-		    if (e.routes.length < this.maxRouteCount) {
+		    var needed = false;
+		    for (var i = 0; i < e.routes.length; i++) {
+			needed = needed || (e.routes[i].level === 0); // find participant peers
+		    }
+		    if (e.routes.length > 0 && !needed) {
 			World.shutdownWorld();
 		    }
 		}
 	    }
-	}, [sub(["DOM", self.selector, self.fragmentClass, self.fragmentSpec], 1, 1)]);
+	}, [monitoring]);
     }));
 };
 
