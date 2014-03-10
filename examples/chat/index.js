@@ -94,6 +94,9 @@ $(document).ready(function () {
 	console.log('starting ground boot');
 	// World.spawn(new Spy());
 	spawnJQueryDriver();
+	spawnDOMDriver();
+	spawnRoutingTableWidget("#spy-holder", "spy", 1000);
+
 	World.spawn(new WakeDetector());
 	var wsconn = new WebSocketConnection("broker", $("#wsurl").val(), true);
 	World.spawn(wsconn);
