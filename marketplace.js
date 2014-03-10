@@ -191,6 +191,7 @@ function filterEvent(e, routes) {
 
 function World(bootFn) {
     this.nextPid = 0;
+    this.alive = true;
     this.eventQueue = [];
     this.processTable = {};
     this.downwardRoutes = [];
@@ -274,7 +275,7 @@ World.prototype.isQuiescent = function () {
 World.prototype.step = function () {
     this.dispatchEvents();
     this.performActions();
-    return this.stepChildren() || !this.isQuiescent();
+    return this.alive && (this.stepChildren() || !this.isQuiescent());
 };
 
 World.prototype.startStepping = function () {
@@ -346,7 +347,7 @@ World.prototype.performActions = function () {
     var queue = this.processActions;
     this.processActions = [];
     var item;
-    while ((item = queue.shift())) {
+    while ((item = queue.shift()) && this.alive) {
 	this.performAction(item[0], item[1]);
     }
 };
@@ -384,6 +385,7 @@ World.prototype.performAction = function (pid, action) {
 	}
 	break;
     case "shutdownWorld":
+	this.alive = false; // force us to stop doing things immediately
 	World.exit();
 	break;
     default:
