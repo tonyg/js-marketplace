@@ -46,7 +46,9 @@ function spawnRoutingTableWidget(selector, fragmentClass) {
 
 	digestRoutes: function (rs) {
 	    var s = [];
-	    function key(r) { return JSON.stringify([r.pattern, r.level, r.isSubscription]); }
+	    function key(r) { return JSON.stringify([r.pattern,
+						     r.isSubscription ? r.level : -r.level,
+						     r.isSubscription]); }
 	    for (var i = 0; i < rs.length; i++) {
 		var p = rs[i].pattern;
 		if (p[0] !== "DOM" || p[1] !== selector || p[2] !== fragmentClass) {
