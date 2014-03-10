@@ -83,7 +83,7 @@ DOMFragment.prototype.buildNodes = function () {
     var nodes = [];
     $(self.selector).each(function (index, domNode) {
 	var n = self.interpretSpec(self.fragmentSpec);
-	n.className = self.fragmentClass;
+	n.classList.add(self.fragmentClass);
 	domNode.appendChild(n);
 	nodes.push(n);
     });
