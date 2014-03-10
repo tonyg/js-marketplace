@@ -1,5 +1,4 @@
-function spawnRoutingTableWidget(selector, fragmentClass, hysteresisDelay) {
-    hysteresisDelay = hysteresisDelay || 50;
+function spawnRoutingTableWidget(selector, fragmentClass) {
 
     function sortedBy(xs, f) {
 	var keys = [];
@@ -88,18 +87,20 @@ function spawnRoutingTableWidget(selector, fragmentClass, hysteresisDelay) {
 	},
 
 	handleEvent: function (e) {
+	    var self = this;
 	    if (e.type === "routes") {
-		this.nextState = this.digestRoutes(e.routes);
-		if (!this.timer) {
-		    var self = this;
-		    this.timer = setTimeout(World.wrap(function () {
-			if (JSON.stringify(self.nextState) !== JSON.stringify(self.state)) {
-			    self.state = self.nextState;
-			    self.updateState();
-			}
-			self.timer = false;
-		    }), hysteresisDelay);
+		self.nextState = self.digestRoutes(e.routes);
+		if (self.timer) {
+		    clearTimeout(self.timer);
+		    self.timer = false;
 		}
+		self.timer = setTimeout(World.wrap(function () {
+		    if (JSON.stringify(self.nextState) !== JSON.stringify(self.state)) {
+			self.state = self.nextState;
+			self.updateState();
+		    }
+		    self.timer = false;
+		}), 50);
 	    }
 	}
     });

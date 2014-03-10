@@ -95,7 +95,7 @@ $(document).ready(function () {
 	// World.spawn(new Spy());
 	spawnJQueryDriver();
 	spawnDOMDriver();
-	spawnRoutingTableWidget("#spy-holder", "spy", 1000);
+	spawnRoutingTableWidget("#spy-holder", "spy");
 
 	World.spawn(new WakeDetector());
 	var wsconn = new WebSocketConnection("broker", $("#wsurl").val(), true);
