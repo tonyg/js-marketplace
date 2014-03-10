@@ -1,3 +1,4 @@
+///////////////////////////////////////////////////////////////////////////
 // WebSocket client driver
 
 var DEFAULT_RECONNECT_DELAY = 100;
@@ -193,3 +194,34 @@ WebSocketConnection.prototype.onclose = function (e) {
 	    : this.reconnectDelay;
     }
 };
+
+///////////////////////////////////////////////////////////////////////////
+// Wire protocol representation of events and actions
+
+function encodeEvent(e) {
+    switch (e.type) {
+    case "routes":
+	var rs = [];
+	for (var i = 0; i < e.routes.length; i++) {
+	    rs.push(e.routes[i].toJSON());
+	}
+	return ["routes", rs];
+    case "message":
+	return ["message", e.message, e.metaLevel, e.isFeedback];
+    }
+}
+
+function decodeAction(j) {
+    switch (j[0]) {
+    case "routes":
+	var rs = [];
+	for (var i = 0; i < j[1].length; i++) {
+	    rs.push(Route.fromJSON(j[1][i]));
+	}
+	return updateRoutes(rs);
+    case "message":
+	return sendMessage(j[1], j[2], j[3]);
+    default:
+	throw { message: "Invalid JSON-encoded action: " + JSON.stringify(j) };
+    }
+}
