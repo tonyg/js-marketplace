@@ -1,0 +1,29 @@
+Bug: onmessage:
+    if (j === "ping") {
+	this.sock.send(JSON.stringify("pong"));
+	return;
+    }
+
+ - if the connection closes before the pong can be sent, exception leads to process crash.
+ - thoughts: 1. the websocket should be closed if the process managing it exits
+   	     2. the websocket-manager process should be supervised
+
+ - how to achieve fate-sharing?
+    - onexit handler for processes? dual to boot?
+    - wait, the socket is being closed correctly. it's the zombie restart that's the problem
+    - make World.wrap() check that the intended process is still alive?
+
+haha my code is silly
+it needs to be refactored
+the connection process should just exit when onclose is detected
+a supervisor should manage the reconnect exponential backoff
+and finally, the process that does the connected/disconnected display is looking at the wrong thing
+it's being too trusting
+it doesn't tell anyone if the connection itself has vanished
+only when the connection is present but changing internal state
+
+For now, I've trapped exceptions sending :( and left the reconnect
+logic in the WebSocketConnection.
+
+TODO: make a proper supervisor, with timer-driven hysteresis and
+conversation-specific state machines.
