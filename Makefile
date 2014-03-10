@@ -21,7 +21,7 @@ private-key.pem:
 
 server-cert.pem: private-key.pem
 	openssl req -new -x509 -nodes -sha1 -days 365 \
-		-subj /CN=chat-demo.js-marketplace.leastfixedpoint.com \
+		-subj /CN=server.minimart.leastfixedpoint.com \
 		-passin pass:a \
 		-key private-key.pem > $@
 
