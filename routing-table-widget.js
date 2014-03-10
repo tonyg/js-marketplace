@@ -1,4 +1,5 @@
-function spawnRoutingTableWidget(selector, fragmentClass) {
+function spawnRoutingTableWidget(selector, fragmentClass, hysteresisDelay) {
+    hysteresisDelay = hysteresisDelay || 50;
 
     function sortedBy(xs, f) {
 	var keys = [];
@@ -97,7 +98,7 @@ function spawnRoutingTableWidget(selector, fragmentClass) {
 			    self.updateState();
 			}
 			self.timer = false;
-		    }), 50);
+		    }), hysteresisDelay);
 		}
 	    }
 	}
