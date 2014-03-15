@@ -2,7 +2,10 @@ APP_NAME=MarketplaceChat.app
 LIB_SOURCES=\
 	marketplace.js \
 	spy.js \
+	dom-driver.js \
 	jquery-driver.js \
+	routing-table-widget.js \
+	routing-table-widget.css \
 	wake-detector.js \
 	websocket-driver.js
 APP_SOURCES=\
