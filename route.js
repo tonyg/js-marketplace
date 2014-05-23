@@ -323,10 +323,6 @@ function Routing(exports) {
 		}
 		return target.emptyGuard();
 	    } else {
-		var target = rwild(w).copy();
-		for (var key in r1.entries) { examineKey(r1, key, r2); }
-		for (var key in r2.entries) { examineKey(r2, key, r1); }
-		return target;
 		function examineKey(rA, key, rB) {
 		    if ((key !== __) && !target.has(key)) {
 			var k = merge(rA.get(key), rB.get(key));
@@ -343,6 +339,10 @@ function Routing(exports) {
 			}
 		    }
 		}
+		var target = rwild(w).copy();
+		for (var key in r1.entries) { examineKey(r1, key, r2); }
+		for (var key in r2.entries) { examineKey(r2, key, r1); }
+		return target;
 	    }
 	}
     }
@@ -388,22 +388,6 @@ function Routing(exports) {
 	    var w = walk(w1, w2);
 
 	    var target = new $Dict();
-	    if (is_emptyMatcher(w1)) {
-		if (is_emptyMatcher(w2)) {
-		    for (var key in r1.smallerOf(r2).entries) examineKey(key);
-		} else {
-		    for (var key in r1.entries) examineKey(key);
-		}
-	    } else {
-		if (is_emptyMatcher(w2)) {
-		    for (var key in r2.entries) examineKey(key);
-		} else {
-		    rupdateInplace(target, __, w);
-		    for (var key in r1.entries) examineKey(key);
-		    for (var key in r2.entries) examineKey(key);
-		}
-	    }
-	    return target.emptyGuard();
 
 	    function examineKey(key) {
 		if ((key !== __) && !target.has(key)) {
@@ -424,6 +408,23 @@ function Routing(exports) {
 		    }
 		}
 	    }
+
+	    if (is_emptyMatcher(w1)) {
+		if (is_emptyMatcher(w2)) {
+		    for (var key in r1.smallerOf(r2).entries) examineKey(key);
+		} else {
+		    for (var key in r1.entries) examineKey(key);
+		}
+	    } else {
+		if (is_emptyMatcher(w2)) {
+		    for (var key in r2.entries) examineKey(key);
+		} else {
+		    rupdateInplace(target, __, w);
+		    for (var key in r1.entries) examineKey(key);
+		    for (var key in r2.entries) examineKey(key);
+		}
+	    }
+	    return target.emptyGuard();
 	}
 
 	function walkWild(walker, w, key, k) {
@@ -478,17 +479,6 @@ function Routing(exports) {
 	    var w = walk(w1, w2);
 	    var target;
 
-	    if (is_emptyMatcher(w2)) {
-		target = r1.copy();
-		for (var key in r2.entries) examineKey(key);
-	    } else {
-		target = new $Dict();
-		rupdateInplace(target, __, w);
-		for (var key in r1.entries) examineKey(key);
-		for (var key in r2.entries) examineKey(key);
-	    }
-	    return target.emptyGuard();
-
 	    function examineKey(key) {
 		if (key !== __) {
 		    var k1 = r1.get(key);
@@ -515,6 +505,17 @@ function Routing(exports) {
 		    rupdateInplace(target, key, (requal(updatedK, w) ? emptyMatcher : updatedK));
 		}
 	    }
+
+	    if (is_emptyMatcher(w2)) {
+		target = r1.copy();
+		for (var key in r2.entries) examineKey(key);
+	    } else {
+		target = new $Dict();
+		rupdateInplace(target, __, w);
+		for (var key in r1.entries) examineKey(key);
+		for (var key in r2.entries) examineKey(key);
+	    }
+	    return target.emptyGuard();
 	}
 
 	function walkWild(key, k, w) {
@@ -613,22 +614,6 @@ function Routing(exports) {
 	    var w2 = r2.get(__);
 	    walk(w1, w2);
 
-	    // Optimize similarly to intersect().
-	    if (is_emptyMatcher(w1)) {
-		if (is_emptyMatcher(w2)) {
-		    for (var key in r1.smallerOf(r2).entries) examineKey(key);
-		} else {
-		    for (var key in r1.entries) examineKey(key);
-		}
-	    } else {
-		if (is_emptyMatcher(w2)) {
-		    for (var key in r2.entries) examineKey(key);
-		} else {
-		    for (var key in r1.entries) examineKey(key);
-		    for (var key in r2.entries) examineKey(key);
-		}
-	    }
-
 	    function examineKey(key) {
 		if (key !== __) {
 		    var k1 = r1.get(key);
@@ -646,6 +631,22 @@ function Routing(exports) {
 			    walk(k1, k2);
 			}
 		    }
+		}
+	    }
+
+	    // Optimize similarly to intersect().
+	    if (is_emptyMatcher(w1)) {
+		if (is_emptyMatcher(w2)) {
+		    for (var key in r1.smallerOf(r2).entries) examineKey(key);
+		} else {
+		    for (var key in r1.entries) examineKey(key);
+		}
+	    } else {
+		if (is_emptyMatcher(w2)) {
+		    for (var key in r2.entries) examineKey(key);
+		} else {
+		    for (var key in r1.entries) examineKey(key);
+		    for (var key in r2.entries) examineKey(key);
 		}
 	    }
 	}
@@ -899,7 +900,6 @@ function Routing(exports) {
 		var mk = m.get(key);
 		var piece;
 		if (is_keyOpen(key)) {
-		    piece = walkSeq(mk, seqK);
 		    function seqK(vss, vsk) {
 			var acc = [];
 			for (var i = 0; i < vss.length; i++) {
@@ -908,6 +908,7 @@ function Routing(exports) {
 			}
 			return acc;
 		    }
+		    piece = walkSeq(mk, seqK);
 		} else if (is_keyClose(key)) {
 		    die("matcherKeys: internal error: unexpected key-close");
 		} else {
@@ -930,7 +931,6 @@ function Routing(exports) {
 		if (is_keyClose(key)) {
 		    piece = k([[]], mk);
 		} else {
-		    piece = walk(rseq(key, mk), outerK);
 		    function outerK(v, vk) {
 			return walkSeq(vk, innerK);
 			function innerK(vss, vsk) {
@@ -943,6 +943,7 @@ function Routing(exports) {
 			    return k(acc, vsk);
 			}
 		    }
+		    piece = walk(rseq(key, mk), outerK);
 		}
 		if (piece == null) return null;
 		acc = acc.concat(piece);
