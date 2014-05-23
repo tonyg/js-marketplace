@@ -52,3 +52,12 @@ dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.newSet('A'), [1, 2]),
 				     r.compilePattern(r.newSet('C'), [1, 3]),
 				     r.compilePattern(r.newSet('B'), [3, 4])),
 			     r.compileProjection([r._$(), r._$()]))));
+
+var R1 = r.compilePattern(r.newSet('A'), [r.__, "B"]);
+var R2 = r.compilePattern(r.newSet('B'), ["A", r.__]);
+var R12 = r.union(R1, R2);
+dumpM(R1);
+dumpM(R2);
+dumpM(R12);
+dumpM(r.erasePath(R12, R1));
+dumpM(r.erasePath(R12, R2));

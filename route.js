@@ -157,6 +157,32 @@ function Routing(exports) {
 	}
     }
 
+    function requal(a, b) {
+	if (a === null) {
+	    return (b === null);
+	}
+	if (b === null) return false;
+
+	if (a instanceof $WildcardSequence) {
+	    if (!(b instanceof $WildcardSequence)) return false;
+	    a = a.matcher;
+	    b = b.matcher;
+	}
+	if (b instanceof $WildcardSequence) return false;
+
+	if (a instanceof $Success) {
+	    if (!(b instanceof $Success)) return false;
+	    return valuesEqual(a.value, b.value);
+	}
+	if (b instanceof $Success) return false;
+
+	for (var key in a.entries) {
+	    if (!b.has(key)) return false;
+	    if (!requal(a.entries[key], b.entries[key])) return false;
+	}
+	return true;
+    }
+
     function is_keyOpen(k) {
 	return k === SOA;
     }
@@ -213,6 +239,20 @@ function Routing(exports) {
 	}
     }
 
+    function setEqual(s1, s2) {
+	for (var key in s1) {
+	    if (s1.hasOwnProperty(key)) {
+		if (s1[key] !== s2[key]) return false;
+	    }
+	}
+	for (var key in s2) {
+	    if (s2.hasOwnProperty(key)) {
+		if (s1[key] !== s2[key]) return false;
+	    }
+	}
+	return true;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
 
     var unionSuccesses = function (v1, v2) {
@@ -237,6 +277,10 @@ function Routing(exports) {
 
     var projectSuccess = function (v) {
 	return v;
+    };
+
+    var valuesEqual = function (a, b) {
+	return setEqual(a, b);
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -438,14 +482,15 @@ function Routing(exports) {
 		target = r1.copy();
 		for (var key in r2.entries) examineKey(key);
 	    } else {
-		target = rwild(w);
+		target = new $Dict();
+		rupdateInplace(target, __, w);
 		for (var key in r1.entries) examineKey(key);
 		for (var key in r2.entries) examineKey(key);
 	    }
 	    return target.emptyGuard();
 
 	    function examineKey(key) {
-		if ((key !== __) && !target.has(key)) {
+		if (key !== __) {
 		    var k1 = r1.get(key);
 		    var k2 = r2.get(key);
 		    var updatedK;
