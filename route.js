@@ -128,7 +128,7 @@ function Routing(exports) {
 		return rseq(SOA, acc);
 	    }
 
-	    return rseq(p, acc);
+	    return rseq(JSON.stringify(p), acc);
 	}
     }
 
@@ -571,8 +571,9 @@ function Routing(exports) {
 		    r = r.get(__);
 		}
 	    } else {
-		if (v in r.entries) {
-		    r = r.get(v);
+		var key = JSON.stringify(v);
+		if (key in r.entries) {
+		    r = r.get(key);
 		} else {
 		    r = r.get(__);
 		}
@@ -702,7 +703,11 @@ function Routing(exports) {
 		return;
 	    }
 
-	    acc.push(p);
+	    if (p === __) {
+		acc.push(p);
+	    } else {
+		acc.push(JSON.stringify(p));
+	    }
 	}
     }
 
@@ -906,7 +911,7 @@ function Routing(exports) {
 		} else if (is_keyClose(key)) {
 		    die("matcherKeys: internal error: unexpected key-close");
 		} else {
-		    piece = k(key, mk);
+		    piece = k(JSON.parse(key), mk);
 		}
 		if (piece == null) return null;
 		acc = acc.concat(piece);
