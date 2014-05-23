@@ -1008,6 +1008,80 @@ function Routing(exports) {
 
     ///////////////////////////////////////////////////////////////////////////
 
+    function GestaltLevel(subs, advs) {
+	this.subscriptions = subs;
+	this.advertisements = advs;
+    }
+
+    var emptyLevel = new GestaltLevel(emptyMatcher, emptyMatcher);
+    var emptyMetaLevel = [];
+
+    function Gestalt(metaLevels) {
+	this.metaLevels = metaLevels;
+    }
+
+    Gestalt.prototype.getMetaLevel = function (n) {
+	return this.metaLevels[n] || emptyMetaLevel;
+    };
+
+    Gestalt.prototype.getLevel = function (metaLevel, level) {
+	return this.getMetaLevel(metaLevel)[level] || emptyLevel;
+    };
+
+    Gestalt.prototype.matchValue = function (body, metaLevel, isFeedback) {
+	var levels = this.getMetaLevel(metaLevel);
+	var pids = {};
+	for (var i = 0; i < levels.length; i++) {
+	    var matcher = (isFeedback ? levels[i].advertisements : levels[i].subscriptions);
+	    setUnionInplace(pids, matchValue(matcher, body));
+	}
+	return pids;
+    };
+
+    Gestalt.prototype.project = function (metaLevel, level, getAdvertisements, spec) {
+	var l = this.getLevel(metaLevel, level);
+	var matcher = (getAdvertisements ? l.advertisements : l.subscriptions);
+	return project(matcher, spec);
+    };
+
+    Gestalt.prototype.drop = function () {
+	var mls = shallowCopyArray(this.metaLevels);
+	mls.shift();
+	return new Gestalt(mls);
+    };
+
+    Gestalt.prototype.lift = function () {
+	var mls = shallowCopyArray(this.metaLevels);
+	mls.unshift(emptyMetaLevel);
+	return new Gestalt(mls);
+    };
+
+    function simpleGestalt(isAdv, pat, level, metaLevel) {
+	var matcher = compilePattern(true, pat);
+	var l = new GestaltLevel(isAdv ? emptyMatcher : matcher,
+				 isAdv ? matcher : emptyMatcher);
+	var levels = [l];
+	while (level--) { levels.unshift(emptyLevel); }
+	var metaLevels = [levels];
+	while (metaLevel--) { metaLevels.unshift(emptyMetaLevel); }
+	return new Gestalt(metaLevels);
+    }
+
+    var emptyGestalt = new Gestalt([]);
+
+    Gestalt.prototype.isEmpty = function () {
+	for (var i = 0; i < this.metaLevels.length; i++) {
+	    var levels = this.metaLevels[i];
+	    for (var j = 0; j < levels.length; j++) {
+		if (!is_emptyMatcher(levels[i].subscriptions)) return false;
+		if (!is_emptyMatcher(levels[i].advertisements)) return false;
+	    }
+	}
+	return true;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+
     exports.__ = __;
     exports.newSet = newSet;
     exports.$Capture = $Capture;
