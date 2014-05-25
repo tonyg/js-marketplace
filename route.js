@@ -201,10 +201,10 @@ function Routing(exports) {
     ///////////////////////////////////////////////////////////////////////////
     // Enough of sets to get by with
 
-    function newSet() {
+    function arrayToSet(xs) {
 	var s = {};
-	for (var i = 0; i < arguments.length; i++) {
-	    s[arguments[i]] = arguments[i];
+	for (var i = 0; i < xs.length; i++) {
+	    s[JSON.stringify(xs[i])] = xs[i];
 	}
 	return s;
     }
@@ -222,7 +222,7 @@ function Routing(exports) {
 	return s;
     }
 
-    function setEmpty(s) {
+    function is_emptySet(s) {
 	for (var k in s) {
 	    if (s.hasOwnProperty(k))
 		return false;
@@ -234,6 +234,16 @@ function Routing(exports) {
 	var s = {};
 	for (var key in s1) {
 	    if (s1.hasOwnProperty(key) && !s2.hasOwnProperty(key)) {
+		s[key] = s1[key];
+	    }
+	}
+	return s;
+    }
+
+    function setIntersect(s1, s2) {
+	var s = {};
+	for (var key in s1) {
+	    if (s1.hasOwnProperty(key) && s2.hasOwnProperty(key)) {
 		s[key] = s1[key];
 	    }
 	}
@@ -276,7 +286,7 @@ function Routing(exports) {
 
     var erasePathSuccesses = function (v1, v2) {
 	var r = setSubtract(v1, v2);
-	if (setEmpty(r)) return null;
+	if (is_emptySet(r)) return null;
 	return r;
     };
 
@@ -597,7 +607,7 @@ function Routing(exports) {
 
     // TODO: better name for this
     function matchMatcher(o1, o2, seed) {
-	var acc = seed || newSet(); // will be modified in place
+	var acc = seed || {}; // will be modified in place
 	walk(o1, o2);
 	return acc;
 
@@ -1217,7 +1227,7 @@ function Routing(exports) {
     };
 
     Gestalt.prototype.label = function (pid) {
-	var pids = newSet(pid);
+	var pids = arrayToSet([pid]);
 	return this.transform(function (m) { return relabel(m, function (v) { return pids; }); });
     };
 
@@ -1252,7 +1262,12 @@ function Routing(exports) {
     ///////////////////////////////////////////////////////////////////////////
 
     exports.__ = __;
-    exports.newSet = newSet;
+    exports.arrayToSet = arrayToSet;
+    exports.setUnion = setUnion;
+    exports.setSubtract = setSubtract;
+    exports.setIntersect = setIntersect;
+    exports.setEqual = setEqual;
+    exports.is_emptySet = is_emptySet;
     exports.$Capture = $Capture;
     exports._$ = _$;
     exports.is_emptyMatcher = is_emptyMatcher;

@@ -18,8 +18,8 @@ function dumpG(g) {
     return g;
 }
 
-mAny = r.compilePattern(r.newSet('mAny'), r.__);
-mAAny = r.compilePattern(r.newSet('mAAny'), ['A', r.__]);
+mAny = r.compilePattern(r.arrayToSet(['mAny']), r.__);
+mAAny = r.compilePattern(r.arrayToSet(['mAAny']), ['A', r.__]);
 dumpM(mAny);
 dumpM(mAAny);
 
@@ -37,30 +37,30 @@ dump(r.matchValue(mAAny, ['A', [['hi']]]));
 
 console.log("unions");
 
-dumpM(r.union(r.compilePattern(r.newSet('A'), [r.__, 'A']),
-	      r.compilePattern(r.newSet('B'), [r.__, 'B'])));
+dumpM(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 'A']),
+	      r.compilePattern(r.arrayToSet(['B']), [r.__, 'B'])));
 
-dumpM(r.union(r.compilePattern(r.newSet('A'), [r.__, 'A']),
-	      r.compilePattern(r.newSet('W'), r.__)));
+dumpM(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 'A']),
+	      r.compilePattern(r.arrayToSet(['W']), r.__)));
 
 console.log("projections");
 
-dumpM(r.project(r.union(r.compilePattern(r.newSet('A'), r.__),
-			r.compilePattern(r.newSet('B'), ['b'])),
+dumpM(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), r.__),
+			r.compilePattern(r.arrayToSet(['B']), ['b'])),
 		r.compileProjection(r._$([[r.__]]))));
 
-dumpM(r.project(r.union(r.compilePattern(r.newSet('A'), [1, 2]),
-			r.compilePattern(r.newSet('C'), [1, 3]),
-			r.compilePattern(r.newSet('B'), [3, 4])),
+dumpM(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
+			r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+			r.compilePattern(r.arrayToSet(['B']), [3, 4])),
 		r.compileProjection([r._$(), r._$()])));
 
-dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.newSet('A'), [1, 2]),
-				     r.compilePattern(r.newSet('C'), [1, 3]),
-				     r.compilePattern(r.newSet('B'), [3, 4])),
+dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
+				     r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+				     r.compilePattern(r.arrayToSet(['B']), [3, 4])),
 			     r.compileProjection([r._$(), r._$()]))));
 
-var R1 = r.compilePattern(r.newSet('A'), [r.__, "B"]);
-var R2 = r.compilePattern(r.newSet('B'), ["A", r.__]);
+var R1 = r.compilePattern(r.arrayToSet(['A']), [r.__, "B"]);
+var R2 = r.compilePattern(r.arrayToSet(['B']), ["A", r.__]);
 var R12 = r.union(R1, R2);
 dumpM(R1);
 dumpM(R2);
