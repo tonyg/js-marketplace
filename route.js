@@ -1000,7 +1000,6 @@ function Routing(exports) {
 
 	    var needSep = false;
 	    for (var key in m.entries) {
-		if (key === '__length') continue;
 		var k = m.entries[key];
 		if (needSep) {
 		    acc.push("\n");
