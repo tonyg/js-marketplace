@@ -1023,6 +1023,8 @@ function Routing(exports) {
     }
 
     ///////////////////////////////////////////////////////////////////////////
+    // Gestalts.
+    // TODO: support Infinity as a level number
 
     function GestaltLevel(subs, advs) {
 	this.subscriptions = subs;
