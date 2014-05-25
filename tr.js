@@ -101,3 +101,28 @@ dump(r.simpleGestalt(false, "A", 0, 2).label(123).matchValue("A", 2, false));
 dump(r.simpleGestalt(false, "A", 2, 0).label(123).matchValue("A", 2, false));
 dump(r.simpleGestalt(false, "A", 2, 1).label(123).matchValue("A", 2, false));
 dump(r.simpleGestalt(false, "A", 2, 2).label(123).matchValue("A", 2, false));
+
+dump(r.matcherEquals(mAny, mAAny) === false);
+dump(r.matcherEquals(mAny, mAny) === true);
+dump(r.matcherEquals(mAAny, mAAny) === true);
+dump(r.matcherEquals(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 'A']),
+			     r.compilePattern(r.arrayToSet(['B']), [r.__, 'B'])),
+		     r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 'A']),
+			     r.compilePattern(r.arrayToSet(['B']), [r.__, 'B'])))
+     === true);
+dump(r.matcherEquals(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 'A']),
+			     r.compilePattern(r.arrayToSet(['B']), [r.__, 'B'])),
+		     r.union(r.compilePattern(r.arrayToSet(['B']), [r.__, 'B']),
+			     r.compilePattern(r.arrayToSet(['A']), [r.__, 'A'])))
+     === true);
+
+dump(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0))
+     .equals(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0)))
+     === true);
+dump(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0))
+     .equals(r.simpleGestalt(true, "B", 0, 0).union(r.simpleGestalt(false, "A", 0, 0)))
+     === true);
+
+dump(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0))
+     .equals(r.simpleGestalt(false, "B", 0, 0).union(r.simpleGestalt(true, "A", 0, 0)))
+     === false);

@@ -1041,6 +1041,11 @@ function Routing(exports) {
 	return is_emptyMatcher(this.subscriptions) && is_emptyMatcher(this.advertisements);
     };
 
+    GestaltLevel.prototype.equals = function (other) {
+	return matcherEquals(this.subscriptions, other.subscriptions)
+	    && matcherEquals(this.advertisements, other.advertisements);
+    };
+
     function straightGestaltLevelOp(op) {
 	return function (p1, p2) {
 	    return new GestaltLevel(op(p1.subscriptions, p2.subscriptions),
@@ -1096,6 +1101,21 @@ function Routing(exports) {
 	var mls = shallowCopyArray(this.metaLevels);
 	mls.unshift(emptyMetaLevel);
 	return new Gestalt(mls);
+    };
+
+    Gestalt.prototype.equals = function (other) {
+	if (this.metaLevels.length !== other.metaLevels.length) return false;
+	for (var i = 0; i < this.metaLevels.length; i++) {
+	    var ls1 = this.metaLevels[i];
+	    var ls2 = other.metaLevels[i];
+	    if (ls1.length !== ls2.length) return false;
+	    for (var j = 0; j < ls1.length; j++) {
+		var p1 = ls1[j];
+		var p2 = ls2[j];
+		if (!p1.equals(p2)) return false;
+	    }
+	}
+	return true;
     };
 
     function simpleGestalt(isAdv, pat, metaLevel, level) {
@@ -1286,6 +1306,7 @@ function Routing(exports) {
     exports.projectionToPattern = projectionToPattern;
     exports.project = project;
     exports.matcherKeys = matcherKeys;
+    exports.matcherEquals = matcherEquals;
     exports.prettyMatcher = prettyMatcher;
 
     exports.GestaltLevel = GestaltLevel;
