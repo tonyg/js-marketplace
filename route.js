@@ -1173,12 +1173,17 @@ function Routing(exports) {
 	return this.mapZip(other, Math.max, straightGestaltLevelOp(union));
     };
 
-    Gestalt.prototype.union = function () {
-	var acc = this;
-	for (var i = 0; i < arguments.length; i++) {
-	    acc = acc.union1(arguments[i]);
+    function gestaltUnion(gs) {
+	if (gs.length === 0) return emptyGestalt;
+	var acc = gs[0];
+	for (var i = 1; i < gs.length; i++) {
+	    acc = acc.union1(gs[i]);
 	}
 	return acc;
+    }
+
+    Gestalt.prototype.union = function () {
+	return arguments.length > 0 ? this.union1(gestaltUnion(arguments)) : this;
     };
 
     // Returns ls, with one level dropped, and with the remaining
@@ -1309,6 +1314,7 @@ function Routing(exports) {
     exports.Gestalt = Gestalt;
     exports.simpleGestalt = simpleGestalt;
     exports.emptyGestalt = emptyGestalt;
+    exports.gestaltUnion = gestaltUnion;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
