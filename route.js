@@ -160,7 +160,7 @@ function Routing(exports) {
 	}
     }
 
-    function requal(a, b) {
+    function matcherEquals(a, b) {
 	if (a === null) {
 	    return (b === null);
 	}
@@ -181,7 +181,7 @@ function Routing(exports) {
 
 	for (var key in a.entries) {
 	    if (!b.has(key)) return false;
-	    if (!requal(a.entries[key], b.entries[key])) return false;
+	    if (!matcherEquals(a.entries[key], b.entries[key])) return false;
 	}
 	return true;
     }
@@ -509,9 +509,11 @@ function Routing(exports) {
 		    // Here we ensure a "minimal" remainder in cases
 		    // where after an erasure, a particular key's
 		    // continuation is the same as the wildcard's
-		    // continuation. TODO: the requal check may be
-		    // expensive. If so, how can it be made cheaper?
-		    rupdateInplace(target, key, (requal(updatedK, w) ? emptyMatcher : updatedK));
+		    // continuation. TODO: the matcherEquals check may
+		    // be expensive. If so, how can it be made
+		    // cheaper?
+		    rupdateInplace(target, key,
+				   (matcherEquals(updatedK, w) ? emptyMatcher : updatedK));
 		}
 	    }
 
