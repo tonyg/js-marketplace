@@ -1320,5 +1320,6 @@ function Routing(exports) {
 if (typeof module !== 'undefined' && module.exports) {
     Routing(module.exports);
 } else if (window) {
-    Routing(window);
+    window.route = {};
+    Routing(window.route);
 }
