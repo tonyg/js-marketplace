@@ -21,6 +21,9 @@ function Routing(exports) {
 	return new $Capture(pattern);
     }
 
+    function isCapture(x) { return x instanceof $Capture || x === _$; }
+    function capturePattern(x) { return x instanceof $Capture ? x.pattern : __; }
+
     var SOC = "__{{"; // start of capture
     var EOC = "__}}"; // end of capture
 
@@ -694,9 +697,9 @@ function Routing(exports) {
 	return acc;
 
 	function walk(p) {
-	    if (p instanceof $Capture) {
+	    if (isCapture(p)) {
 		acc.push(SOC);
-		walk(p.pattern);
+		walk(capturePattern(p));
 		acc.push(EOC);
 		return;
 	    }
@@ -722,7 +725,7 @@ function Routing(exports) {
 	return walk(p);
 
 	function walk(p) {
-	    if (p instanceof $Capture) return walk(p.pattern);
+	    if (isCapture(p)) return walk(capturePattern(p));
 
 	    if (Array.isArray(p)) {
 		var result = [];
