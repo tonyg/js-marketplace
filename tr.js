@@ -12,6 +12,12 @@ function dumpM(m) {
     return m;
 }
 
+function dumpG(g) {
+    console.log(g.pretty());
+    console.log();
+    return g;
+}
+
 mAny = r.compilePattern(r.newSet('mAny'), r.__);
 mAAny = r.compilePattern(r.newSet('mAAny'), ['A', r.__]);
 dumpM(mAny);
@@ -61,3 +67,37 @@ dumpM(R2);
 dumpM(R12);
 dumpM(r.erasePath(R12, R1));
 dumpM(r.erasePath(R12, R2));
+
+console.log();
+dumpG(r.simpleGestalt(false, "A", 0, 0));
+dumpG(r.simpleGestalt(true, "B", 0, 0));
+dumpG(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0)));
+
+console.log();
+dumpG(r.simpleGestalt(false, "A", 2, 2));
+dumpG(r.simpleGestalt(true, "B", 2, 2));
+dumpG(r.simpleGestalt(false, "A", 2, 2).union(r.simpleGestalt(true, "B", 2, 2)));
+
+console.log();
+dump(r.simpleGestalt(false, "A", 0, 0).label(123).matchValue("A", 0, false));
+dump(r.simpleGestalt(false, "A", 0, 1).label(123).matchValue("A", 0, false));
+dump(r.simpleGestalt(false, "A", 0, 2).label(123).matchValue("A", 0, false));
+dump(r.simpleGestalt(false, "A", 2, 0).label(123).matchValue("A", 0, false));
+dump(r.simpleGestalt(false, "A", 2, 1).label(123).matchValue("A", 0, false));
+dump(r.simpleGestalt(false, "A", 2, 2).label(123).matchValue("A", 0, false));
+
+console.log();
+dump(r.simpleGestalt(false, "A", 0, 0).label(123).matchValue("A", 1, false));
+dump(r.simpleGestalt(false, "A", 0, 1).label(123).matchValue("A", 1, false));
+dump(r.simpleGestalt(false, "A", 0, 2).label(123).matchValue("A", 1, false));
+dump(r.simpleGestalt(false, "A", 2, 0).label(123).matchValue("A", 1, false));
+dump(r.simpleGestalt(false, "A", 2, 1).label(123).matchValue("A", 1, false));
+dump(r.simpleGestalt(false, "A", 2, 2).label(123).matchValue("A", 1, false));
+
+console.log();
+dump(r.simpleGestalt(false, "A", 0, 0).label(123).matchValue("A", 2, false));
+dump(r.simpleGestalt(false, "A", 0, 1).label(123).matchValue("A", 2, false));
+dump(r.simpleGestalt(false, "A", 0, 2).label(123).matchValue("A", 2, false));
+dump(r.simpleGestalt(false, "A", 2, 0).label(123).matchValue("A", 2, false));
+dump(r.simpleGestalt(false, "A", 2, 1).label(123).matchValue("A", 2, false));
+dump(r.simpleGestalt(false, "A", 2, 2).label(123).matchValue("A", 2, false));

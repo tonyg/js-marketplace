@@ -206,6 +206,12 @@ function Routing(exports) {
 	return s;
     }
 
+    function setToArray(s) {
+	var r = [];
+	for (var k in s) r.push(s[k]);
+	return r;
+    }
+
     function setUnion(s1, s2) {
 	var s = {};
 	setUnionInplace(s, s1);
@@ -1013,6 +1019,24 @@ function Routing(exports) {
 	this.advertisements = advs;
     }
 
+    GestaltLevel.prototype.isEmpty = function () {
+	return is_emptyMatcher(this.subscriptions) && is_emptyMatcher(this.advertisements);
+    };
+
+    function straightGestaltLevelOp(op) {
+	return function (p1, p2) {
+	    return new GestaltLevel(op(p1.subscriptions, p2.subscriptions),
+				    op(p1.advertisements, p2.advertisements));
+	};
+    };
+
+    function crossedGestaltLevelOp(op) {
+	return function (p1, p2) {
+	    return new GestaltLevel(op(p1.subscriptions, p2.advertisements),
+				    op(p2.subscriptions, p1.advertisements));
+	};
+    };
+
     var emptyLevel = new GestaltLevel(emptyMatcher, emptyMatcher);
     var emptyMetaLevel = [];
 
@@ -1035,7 +1059,7 @@ function Routing(exports) {
 	    var matcher = (isFeedback ? levels[i].advertisements : levels[i].subscriptions);
 	    setUnionInplace(pids, matchValue(matcher, body));
 	}
-	return pids;
+	return setToArray(pids);
     };
 
     Gestalt.prototype.project = function (metaLevel, level, getAdvertisements, spec) {
@@ -1056,7 +1080,7 @@ function Routing(exports) {
 	return new Gestalt(mls);
     };
 
-    function simpleGestalt(isAdv, pat, level, metaLevel) {
+    function simpleGestalt(isAdv, pat, metaLevel, level) {
 	var matcher = compilePattern(true, pat);
 	var l = new GestaltLevel(isAdv ? emptyMatcher : matcher,
 				 isAdv ? matcher : emptyMatcher);
@@ -1080,6 +1104,146 @@ function Routing(exports) {
 	return true;
     };
 
+    Gestalt.prototype.mapZip = function (other, lengthCombiner, f,
+					 levelsTransformer1, levelsTransformer2)
+    {
+	var metaLevels = [];
+	var mls1 = this.metaLevels;
+	var mls2 = other.metaLevels;
+	var nm = lengthCombiner(mls1.length, mls2.length);
+	for (var i = 0; i < nm; i++) {
+	    var levels = [];
+	    var ls1 = mls1[i] || emptyMetaLevel;
+	    var ls2 = mls2[i] || emptyMetaLevel;
+	    if (levelsTransformer1) ls1 = levelsTransformer1(ls1);
+	    if (levelsTransformer2) ls2 = levelsTransformer2(ls2);
+	    var nl = lengthCombiner(ls1.length, ls2.length);
+	    for (var j = 0; j < nl; j++) {
+		var p1 = ls1[j] || emptyLevel;
+		var p2 = ls2[j] || emptyLevel;
+		var p = f(p1, p2);
+		if (!p.isEmpty()) {
+		    while (levels.length < j) levels.push(emptyLevel);
+		    levels.push(p);
+		}
+	    }
+	    if (levels.length > 0) {
+		while (metaLevels.length < i) metaLevels.push(emptyMetaLevel);
+		metaLevels.push(levels);
+	    }
+	}
+	return new Gestalt(metaLevels);
+    };
+
+    Gestalt.prototype.union1 = function (other) {
+	return this.mapZip(other, Math.max, straightGestaltLevelOp(union));
+    };
+
+    Gestalt.prototype.union = function () {
+	var acc = this;
+	for (var i = 0; i < arguments.length; i++) {
+	    acc = acc.union1(arguments[i]);
+	}
+	return acc;
+    };
+
+    // Returns ls, with one level dropped, and with the remaining
+    // matchers "smeared" across lower levels. This could end up being
+    // reasonably expensive - possibly cache it?
+    function smearLevels(levels) {
+	var result = shallowCopyArray(levels);
+	for (var i = result.length - 2; i >= 0; i--) {
+	    result[i].subscriptions = union(result[i].subscriptions, result[i+1].subscriptions);
+	    result[i].advertisements = union(result[i].advertisements, result[i+1].advertisements);
+	}
+	return result;
+    };
+
+    Gestalt.prototype.filter = function (perspective) {
+	return this.mapZip(perspective, Math.min, crossedGestaltLevelOp(intersect),
+			   null,
+			   smearLevels);
+    };
+
+    Gestalt.prototype.match = function (perspective) {
+	var pids = {};
+	var nm = Math.min(this.metaLevels.length, perspective.metaLevels.length);
+	for (var i = 0; i < nm; i++) {
+	    var ls1 = mls1[i] || emptyMetaLevel;
+	    var ls2 = smearLevels(mls2[i] || emptyMetaLevel);
+	    var nl = Math.min(ls1.length, ls2.length);
+	    for (var j = 0; j < nl; j++) {
+		var p1 = ls1[j] || emptyLevel;
+		var p2 = ls2[j] || emptyLevel;
+		matchMatcher(p1.subscriptions, p2.advertisements, pids);
+		matchMatcher(p1.advertisements, p2.subscriptions, pids);
+	    }
+	}
+	return setToArray(pids);
+    };
+
+    Gestalt.prototype.erasePath = function (path) {
+	return this.mapZip(path, Math.max, straightGestaltLevelOp(erasePath));
+    };
+
+    Gestalt.prototype.transform = function (f) {
+	var metaLevels = [];
+	for (var i = 0; i < this.metaLevels.length; i++) {
+	    var ls = this.metaLevels[i];
+	    var levels = [];
+	    for (var j = 0; j < ls.length; j++) {
+		var p0 = ls[j] || emptyLevel;
+		var p = new GestaltLevel(f(p0.subscriptions), f(p0.advertisements));
+		if (!p.isEmpty()) {
+		    while (levels.length < j) levels.push(emptyLevel);
+		    levels.push(p);
+		}
+	    }
+	    if (levels.length > 0) {
+		while (metaLevels.length < i) metaLevels.push(emptyMetaLevel);
+		metaLevels.push(levels);
+	    }
+	}
+	return new Gestalt(metaLevels);
+    };
+
+    Gestalt.prototype.stripLabel = function () {
+	return this.transform(function (m) { return relabel(m, function (v) { return true; }); });
+    };
+
+    Gestalt.prototype.label = function (pid) {
+	var pids = newSet(pid);
+	return this.transform(function (m) { return relabel(m, function (v) { return pids; }); });
+    };
+
+    Gestalt.prototype.pretty = function () {
+	var acc = [];
+	if (this.isEmpty()) {
+	    acc.push("EMPTY GESTALT\n");
+	} else {
+	    for (var i = 0; i < this.metaLevels.length; i++) {
+		var ls = this.metaLevels[i];
+		for (var j = 0; j < ls.length; j++) {
+		    var p = ls[j];
+		    if (!p.isEmpty()) {
+			acc.push("GESTALT metalevel " + i + " level " + j + ":\n");
+			if (!is_emptyMatcher(p.subscriptions)) {
+			    acc.push("  - subs:");
+			    acc.push(prettyMatcher(p.subscriptions, 9));
+			    acc.push("\n");
+			}
+			if (!is_emptyMatcher(p.advertisements)) {
+			    acc.push("  - advs:");
+			    acc.push(prettyMatcher(p.advertisements, 9));
+			    acc.push("\n");
+			}
+		    }
+		}
+	    }
+	}
+	return acc.join('');
+    };
+
     ///////////////////////////////////////////////////////////////////////////
 
     exports.__ = __;
@@ -1100,6 +1264,11 @@ function Routing(exports) {
     exports.project = project;
     exports.matcherKeys = matcherKeys;
     exports.prettyMatcher = prettyMatcher;
+
+    exports.GestaltLevel = GestaltLevel;
+    exports.Gestalt = Gestalt;
+    exports.simpleGestalt = simpleGestalt;
+    exports.emptyGestalt = emptyGestalt;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
