@@ -994,7 +994,10 @@ function Routing(exports) {
 		return;
 	    }
 	    if (m instanceof $Success) {
-		acc.push("{" + JSON.stringify(m.value) + "}");
+		var vs = JSON.stringify(typeof m.value === 'object'
+					? setToArray(m.value)
+					: m.value);
+		acc.push("{" + vs + "}");
 		return;
 	    }
 
