@@ -1113,6 +1113,8 @@ function Routing(exports) {
     };
 
     function simpleGestalt(isAdv, pat, metaLevel, level) {
+	metaLevel = metaLevel || 0;
+	level = level || 0;
 	var matcher = compilePattern(true, pat);
 	var l = new GestaltLevel(isAdv ? emptyMatcher : matcher,
 				 isAdv ? matcher : emptyMatcher);
