@@ -1021,6 +1021,54 @@ function Routing(exports) {
 	}
     }
 
+    function serializeMatcher(m, serializeSuccess) {
+	return walk(m);
+	function walk(m) {
+	    if (m instanceof $WildcardSequence) {
+		return ["...)", m.matcher];
+	    }
+	    if (m instanceof $Success) {
+		return ["", serializeSuccess(m.value)];
+	    }
+	    var acc = [];
+	    for (var key in m.entries) {
+		var k = m.entries[key];
+		if (key === __) key = ["__"];
+		else if (key === SOA) key = ["("];
+		else if (key === EOA) key = [")"];
+		else key = JSON.parse(key);
+		acc.push([key, walk(k)]);
+	    }
+	    return acc;
+	}
+    }
+
+    function deserializeMatcher(r, deserializeSuccess) {
+	return walk(r);
+	function walk(r) {
+	    if (r[0] === "...)") return rwildseq(walk(r[1]));
+	    if (r[0] === "") return rsuccess(deserializeSuccess(r[1]));
+	    var acc = new $Dict();
+	    for (var i = 0; i < r.length; i++) {
+		var rkey = r[i][0];
+		var rk = r[i][1];
+		var key;
+		if (Array.isArray(rkey)) {
+		    switch (rkey[0]) {
+		    case "__": key = __; break;
+		    case "(": key = SOA; break;
+		    case ")": key = EOA; break;
+		    default: die("Invalid serialized special key: " + rkey[0]);
+		    }
+		} else {
+		    key = JSON.stringify(rkey);
+		}
+		rupdateInplace(acc, key, walk(rk));
+	    }
+	    return acc;
+	}
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Gestalts.
     // TODO: support Infinity as a level number
@@ -1286,6 +1334,7 @@ function Routing(exports) {
 
     exports.__ = __;
     exports.arrayToSet = arrayToSet;
+    exports.setToArray = setToArray;
     exports.setUnion = setUnion;
     exports.setSubtract = setSubtract;
     exports.setIntersect = setIntersect;
@@ -1308,6 +1357,8 @@ function Routing(exports) {
     exports.matcherKeys = matcherKeys;
     exports.matcherEquals = matcherEquals;
     exports.prettyMatcher = prettyMatcher;
+    exports.serializeMatcher = serializeMatcher;
+    exports.deserializeMatcher = deserializeMatcher;
 
     exports.GestaltLevel = GestaltLevel;
     exports.Gestalt = Gestalt;

@@ -170,3 +170,16 @@ dump(r.matcherKeys(r.project(r.project(r.union(r.compilePattern(r.arrayToSet(['A
 					       r.compilePattern(r.arrayToSet(['B']), [3, 4])),
 				       r.compileProjection([r._$(), r._$()])),
 			     r.compileProjection([r.__, r._$]))));
+
+(function () {
+    console.log("serializeMatcher");
+    var M = r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+		    r.compilePattern(r.arrayToSet(['D']), [r.__, 3]),
+		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
+    var S = r.serializeMatcher(M, r.setToArray);
+    dump(S);
+    console.log(JSON.stringify(S));
+    dumpM(r.deserializeMatcher(S, r.arrayToSet));
+    dump(r.matcherEquals(M, r.deserializeMatcher(S, r.arrayToSet)) === true);
+})();
