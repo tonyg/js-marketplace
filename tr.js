@@ -183,3 +183,13 @@ dump(r.matcherKeys(r.project(r.project(r.union(r.compilePattern(r.arrayToSet(['A
     dumpM(r.deserializeMatcher(S, r.arrayToSet));
     dump(r.matcherEquals(M, r.deserializeMatcher(S, r.arrayToSet)) === true);
 })();
+
+(function () {
+    console.log("serialize Gestalts");
+    var G = dumpG(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 2, 2)));
+    var S = G.serialize();
+    dump(S);
+    console.log(JSON.stringify(S));
+    dumpG(r.deserializeGestalt(S));
+    dump(G.equals(r.deserializeGestalt(S)) === true);
+})();

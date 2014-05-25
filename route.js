@@ -1024,6 +1024,7 @@ function Routing(exports) {
     function serializeMatcher(m, serializeSuccess) {
 	return walk(m);
 	function walk(m) {
+	    if (is_emptyMatcher(m)) return [];
 	    if (m instanceof $WildcardSequence) {
 		return ["...)", m.matcher];
 	    }
@@ -1046,6 +1047,7 @@ function Routing(exports) {
     function deserializeMatcher(r, deserializeSuccess) {
 	return walk(r);
 	function walk(r) {
+	    if (r.length === 0) return emptyMatcher;
 	    if (r[0] === "...)") return rwildseq(walk(r[1]));
 	    if (r[0] === "") return rsuccess(deserializeSuccess(r[1]));
 	    var acc = new $Dict();
@@ -1272,25 +1274,32 @@ function Routing(exports) {
 	return this.mapZip(path, Math.max, straightGestaltLevelOp(erasePath));
     };
 
-    Gestalt.prototype.transform = function (f) {
-	var metaLevels = [];
-	for (var i = 0; i < this.metaLevels.length; i++) {
-	    var ls = this.metaLevels[i];
+    function mapLevels(inputMetaLevels, f, emptyCheck, emptyLevel) {
+	var outputMetaLevels = [];
+	for (var i = 0; i < inputMetaLevels.length; i++) {
+	    var ls = inputMetaLevels[i];
 	    var levels = [];
 	    for (var j = 0; j < ls.length; j++) {
-		var p0 = ls[j] || emptyLevel;
-		var p = new GestaltLevel(f(p0.subscriptions), f(p0.advertisements));
-		if (!p.isEmpty()) {
+		var p = f(ls[j] || emptyLevel);
+		if (!emptyCheck(p)) {
 		    while (levels.length < j) levels.push(emptyLevel);
 		    levels.push(p);
 		}
 	    }
 	    if (levels.length > 0) {
-		while (metaLevels.length < i) metaLevels.push(emptyMetaLevel);
-		metaLevels.push(levels);
+		while (outputMetaLevels.length < i) outputMetaLevels.push(emptyMetaLevel);
+		outputMetaLevels.push(levels);
 	    }
 	}
-	return new Gestalt(metaLevels);
+	return outputMetaLevels;
+    };
+
+    Gestalt.prototype.transform = function (f) {
+	return new Gestalt(mapLevels(this.metaLevels, function (p) {
+	    return new GestaltLevel(f(p.subscriptions), f(p.advertisements));
+	}, function (p) {
+	    return p.isEmpty();
+	}, emptyLevel));
     };
 
     Gestalt.prototype.stripLabel = function () {
@@ -1330,6 +1339,27 @@ function Routing(exports) {
 	return acc.join('');
     };
 
+    Gestalt.prototype.serialize = function () {
+	function serializeSuccess(v) { return v === true ? true : setToArray(v); }
+	return ["gestalt", mapLevels(this.metaLevels, function (p) {
+	    return [serializeMatcher(p.subscriptions, serializeSuccess),
+		    serializeMatcher(p.advertisements, serializeSuccess)];
+	}, function (pr) {
+	    return pr.length === 2 && pr[0].length === 0 && pr[1].length === 0;
+	}, [[],[]])];
+    };
+
+    function deserializeGestalt(r) {
+	if (r[0] !== "gestalt") die("Invalid gestalt serialization: " + r);
+	function deserializeSuccess(v) { return v === true ? true : arrayToSet(v); }
+	return new Gestalt(mapLevels(r[1], function (pr) {
+	    return new GestaltLevel(deserializeMatcher(pr[0], deserializeSuccess),
+				    deserializeMatcher(pr[1], deserializeSuccess));
+	}, function (p) {
+	    return p.isEmpty();
+	}, emptyLevel));
+    }
+
     ///////////////////////////////////////////////////////////////////////////
 
     exports.__ = __;
@@ -1365,6 +1395,7 @@ function Routing(exports) {
     exports.simpleGestalt = simpleGestalt;
     exports.emptyGestalt = emptyGestalt;
     exports.gestaltUnion = gestaltUnion;
+    exports.deserializeGestalt = deserializeGestalt;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
