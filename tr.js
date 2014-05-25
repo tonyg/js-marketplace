@@ -126,3 +126,47 @@ dump(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0))
 dump(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0))
      .equals(r.simpleGestalt(false, "B", 0, 0).union(r.simpleGestalt(true, "A", 0, 0)))
      === false);
+
+
+console.log("debugging unions (1)");
+dumpM(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+	      r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+	      r.compilePattern(r.arrayToSet(['B']), [3, 4])));
+
+dumpM(r.union(r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+	      r.compilePattern(r.arrayToSet(['B']), [3, 4])));
+
+dumpM(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+	      r.compilePattern(r.arrayToSet(['C']), [1, 3])));
+
+dumpM(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+	      r.compilePattern(r.arrayToSet(['B']), [3, 4])));
+
+console.log("debugging unions (2)");
+var MU = r.emptyMatcher;
+MU = r.union(MU, r.compilePattern(r.arrayToSet(['A']), [r.__, 2]));
+dumpM(MU);
+MU = r.union(MU, r.compilePattern(r.arrayToSet(['C']), [1, 3]));
+dumpM(MU);
+MU = r.union(MU, r.compilePattern(r.arrayToSet(['B']), [3, 4]));
+dumpM(MU);
+
+console.log("debugging unions (3)");
+dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
+	      dumpM(r.union(r.compilePattern(r.arrayToSet('B'), [2]),
+			    r.compilePattern(r.arrayToSet('C'), [3])))));
+
+console.log("matcherKeys on wild matchers");
+dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+				     r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+				     r.compilePattern(r.arrayToSet(['B']), [3, 4])),
+			     r.compileProjection([r._$(), r._$()]))));
+dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+				     r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+				     r.compilePattern(r.arrayToSet(['B']), [3, 4])),
+			     r.compileProjection([r.__, r._$]))));
+dump(r.matcherKeys(r.project(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+					       r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+					       r.compilePattern(r.arrayToSet(['B']), [3, 4])),
+				       r.compileProjection([r._$(), r._$()])),
+			     r.compileProjection([r.__, r._$]))));

@@ -78,14 +78,6 @@ function Routing(exports) {
 	return key in this.entries;
     };
 
-    $Dict.prototype.smallerOf = function (other) {
-	return (other.length < this.length) ? other : this;
-    };
-
-    $Dict.prototype.largerOf = function (other) {
-	return (this.length < other.length) ? this : other;
-    };
-
     function is_emptyMatcher(m) {
 	return (m === emptyMatcher);
     }
@@ -333,8 +325,8 @@ function Routing(exports) {
 
 	    var w = merge(r1.get(__), r2.get(__));
 	    if (is_emptyMatcher(w)) {
-		var smaller = r1.smallerOf(r2);
-		var larger  = r1.largerOf(r2);
+		var smaller = r1.length < r2.length ? r1 : r2;
+		var larger  = r1.length < r2.length ? r2 : r1;
 		var target = larger.copy();
 		for (var key in smaller.entries) {
 		    var k = merge(smaller.get(key), larger.get(key));
@@ -430,7 +422,7 @@ function Routing(exports) {
 
 	    if (is_emptyMatcher(w1)) {
 		if (is_emptyMatcher(w2)) {
-		    for (var key in r1.smallerOf(r2).entries) examineKey(key);
+		    for (var key in (r1.length < r2.length ? r1 : r2).entries) examineKey(key);
 		} else {
 		    for (var key in r1.entries) examineKey(key);
 		}
@@ -658,7 +650,7 @@ function Routing(exports) {
 	    // Optimize similarly to intersect().
 	    if (is_emptyMatcher(w1)) {
 		if (is_emptyMatcher(w2)) {
-		    for (var key in r1.smallerOf(r2).entries) examineKey(key);
+		    for (var key in (r1.length < r2.length ? r1 : r2).entries) examineKey(key);
 		} else {
 		    for (var key in r1.entries) examineKey(key);
 		}
