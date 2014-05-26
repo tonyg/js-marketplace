@@ -937,6 +937,7 @@ function Routing(exports) {
 	return walk(m, function (v, k) { return [v]; });
 
 	function walk(m, k) {
+	    if (m === null) return [];
 	    if (m instanceof $WildcardSequence) return null;
 	    if (m instanceof $Success) return [];
 	    if (m.has(__)) return null;
