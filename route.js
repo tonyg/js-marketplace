@@ -513,8 +513,15 @@ function Routing(exports) {
 		    // continuation. TODO: the matcherEquals check may
 		    // be expensive. If so, how can it be made
 		    // cheaper?
-		    rupdateInplace(target, key,
-				   (matcherEquals(updatedK, w) ? emptyMatcher : updatedK));
+		    if (is_keyOpen(key) || is_keyClose(key)) {
+			// The continuation, even if syntactically
+			// identical to the wildcard, doesn't act the
+			// same way, so we shouldn't merge it.
+			rupdateInplace(target, key, updatedK);
+		    } else {
+			rupdateInplace(target, key,
+				       (matcherEquals(updatedK, w) ? emptyMatcher : updatedK));
+		    }
 		}
 	    }
 
@@ -527,6 +534,32 @@ function Routing(exports) {
 		for (var key in r1.entries) examineKey(key);
 		for (var key in r2.entries) examineKey(key);
 	    }
+
+	    // Here, the target is complete. If it has only two keys,
+	    // one wild and one is_keyClose, and wild's continuation
+	    // is a $WildcardSequence and the other continuation is
+	    // identical to the sequence's continuation, then replace
+	    // the whole thing with a nested $WildcardSequence.
+	    // (We know w === target.get(__) from before.)
+	    //
+	    // TODO: I suspect actually this applies even if there are
+	    // more than two keys, so long as all their continuations
+	    // are identical and there's at least one is_keyClose
+	    // alongside a wild.
+	    if (target.length === 2) {
+		var finalW = target.get(__);
+		if (finalW instanceof $WildcardSequence) {
+		    for (var key in target.entries) {
+			if ((key !== __) && is_keyClose(key)) {
+			    var k = target.get(key);
+			    if (matcherEquals(k, finalW.matcher)) {
+				return finalW;
+			    }
+			}
+		    }
+		}
+	    }
+
 	    return target.emptyGuard();
 	}
 
