@@ -1121,6 +1121,21 @@ function Routing(exports) {
 	    && matcherEquals(this.advertisements, other.advertisements);
     };
 
+    GestaltLevel.prototype.pretty = function () {
+	var acc = [];
+	if (!is_emptyMatcher(this.subscriptions)) {
+	    acc.push("  - subs:");
+	    acc.push(prettyMatcher(this.subscriptions, 9));
+	    acc.push("\n");
+	}
+	if (!is_emptyMatcher(this.advertisements)) {
+	    acc.push("  - advs:");
+	    acc.push(prettyMatcher(this.advertisements, 9));
+	    acc.push("\n");
+	}
+	return acc.join('');
+    };
+
     function straightGestaltLevelOp(op) {
 	return function (p1, p2) {
 	    return new GestaltLevel(op(p1.subscriptions, p2.subscriptions),
@@ -1354,16 +1369,7 @@ function Routing(exports) {
 		    var p = ls[j];
 		    if (!p.isEmpty()) {
 			acc.push("GESTALT metalevel " + i + " level " + j + ":\n");
-			if (!is_emptyMatcher(p.subscriptions)) {
-			    acc.push("  - subs:");
-			    acc.push(prettyMatcher(p.subscriptions, 9));
-			    acc.push("\n");
-			}
-			if (!is_emptyMatcher(p.advertisements)) {
-			    acc.push("  - advs:");
-			    acc.push(prettyMatcher(p.advertisements, 9));
-			    acc.push("\n");
-			}
+			acc.push(p.pretty());
 		    }
 		}
 	    }
