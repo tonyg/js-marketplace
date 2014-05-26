@@ -1309,8 +1309,8 @@ function Routing(exports) {
 	var pids = {};
 	var nm = Math.min(this.metaLevels.length, perspective.metaLevels.length);
 	for (var i = 0; i < nm; i++) {
-	    var ls1 = mls1[i] || emptyMetaLevel;
-	    var ls2 = smearLevels(mls2[i] || emptyMetaLevel);
+	    var ls1 = this.metaLevels[i] || emptyMetaLevel;
+	    var ls2 = smearLevels(perspective.metaLevels[i] || emptyMetaLevel);
 	    var nl = Math.min(ls1.length, ls2.length);
 	    for (var j = 0; j < nl; j++) {
 		var p1 = ls1[j] || emptyLevel;
