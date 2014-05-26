@@ -631,7 +631,7 @@ function Routing(exports) {
 
     // TODO: better name for this
     function matchMatcher(o1, o2, seed) {
-	var acc = seed || {}; // will be modified in place
+	var acc = typeof seed === 'undefined' ? {} : seed; // will be modified in place
 	walk(o1, o2);
 	return acc;
 
