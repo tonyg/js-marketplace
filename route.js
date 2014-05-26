@@ -1290,6 +1290,7 @@ function Routing(exports) {
     // reasonably expensive - possibly cache it?
     function smearLevels(levels) {
 	var result = shallowCopyArray(levels);
+	if (result.length > 0) result.shift();
 	for (var i = result.length - 2; i >= 0; i--) {
 	    result[i].subscriptions = union(result[i].subscriptions, result[i+1].subscriptions);
 	    result[i].advertisements = union(result[i].advertisements, result[i+1].advertisements);
