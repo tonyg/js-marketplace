@@ -1231,8 +1231,7 @@ function Routing(exports) {
 	for (var i = 0; i < this.metaLevels.length; i++) {
 	    var levels = this.metaLevels[i];
 	    for (var j = 0; j < levels.length; j++) {
-		if (!is_emptyMatcher(levels[i].subscriptions)) return false;
-		if (!is_emptyMatcher(levels[i].advertisements)) return false;
+		if (!levels[j].isEmpty()) return false;
 	    }
 	}
 	return true;
