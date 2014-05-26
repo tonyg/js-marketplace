@@ -1148,13 +1148,6 @@ function Routing(exports) {
 	};
     };
 
-    function crossedGestaltLevelOp(op) {
-	return function (p1, p2) {
-	    return new GestaltLevel(op(p1.subscriptions, p2.advertisements),
-				    op(p1.advertisements, p2.subscriptions));
-	};
-    };
-
     var emptyLevel = new GestaltLevel(emptyMatcher, emptyMatcher);
     var emptyMetaLevel = [];
 
@@ -1241,9 +1234,21 @@ function Routing(exports) {
 	return true;
     };
 
-    Gestalt.prototype.mapZip = function (other, lengthCombiner, f,
-					 levelsTransformer1, levelsTransformer2)
-    {
+    function maybePushLevel(levels, i, level) {
+	if (!level.isEmpty()) {
+	    while (levels.length < i) levels.push(emptyLevel);
+	    levels.push(level);
+	}
+    }
+
+    function maybePushMetaLevel(metaLevels, i, metaLevel) {
+	if (metaLevel.length > 0) {
+	    while (metaLevels.length < i) metaLevels.push(emptyMetaLevel);
+	    metaLevels.push(metaLevel);
+	}
+    }
+
+    Gestalt.prototype.mapZip = function (other, lengthCombiner, f) {
 	var metaLevels = [];
 	var mls1 = this.metaLevels;
 	var mls2 = other.metaLevels;
@@ -1252,22 +1257,14 @@ function Routing(exports) {
 	    var levels = [];
 	    var ls1 = mls1[i] || emptyMetaLevel;
 	    var ls2 = mls2[i] || emptyMetaLevel;
-	    if (levelsTransformer1) ls1 = levelsTransformer1(ls1);
-	    if (levelsTransformer2) ls2 = levelsTransformer2(ls2);
 	    var nl = lengthCombiner(ls1.length, ls2.length);
 	    for (var j = 0; j < nl; j++) {
 		var p1 = ls1[j] || emptyLevel;
 		var p2 = ls2[j] || emptyLevel;
 		var p = f(p1, p2);
-		if (!p.isEmpty()) {
-		    while (levels.length < j) levels.push(emptyLevel);
-		    levels.push(p);
-		}
+		maybePushLevel(levels, j, p);
 	    }
-	    if (levels.length > 0) {
-		while (metaLevels.length < i) metaLevels.push(emptyMetaLevel);
-		metaLevels.push(levels);
-	    }
+	    maybePushMetaLevel(metaLevels, i, levels);
 	}
 	return new Gestalt(metaLevels);
     };
@@ -1289,12 +1286,10 @@ function Routing(exports) {
 	return arguments.length > 0 ? this.union1(gestaltUnion(arguments)) : this;
     };
 
-    // Returns ls, with one level dropped, and with the remaining
-    // matchers "smeared" across lower levels. This could end up being
-    // reasonably expensive - possibly cache it?
-    function smearLevels(levels) {
+    // Accumulates matchers from higher-numbered levels into
+    // lower-numbered levels.
+    function telescopeLevels(levels) {
 	var result = shallowCopyArray(levels);
-	if (result.length > 0) result.shift();
 	for (var i = result.length - 2; i >= 0; i--) {
 	    result[i] =
 		new GestaltLevel(union(result[i].subscriptions, result[i+1].subscriptions),
@@ -1303,10 +1298,38 @@ function Routing(exports) {
 	return result;
     };
 
+    Gestalt.prototype.telescoped = function () {
+	var mls = [];
+	for (var i = 0; i < this.metaLevels.length; i++) {
+	    mls.push(telescopeLevels(this.metaLevels[i]));
+	}
+	return new Gestalt(mls);
+    };
+
     Gestalt.prototype.filter = function (perspective) {
-	return this.mapZip(perspective, Math.min, crossedGestaltLevelOp(intersect),
-			   null,
-			   smearLevels);
+	var metaLevels = [];
+	var mls1 = this.metaLevels;
+	var mls2 = perspective.metaLevels;
+	var nm = Math.min(mls1.length, mls2.length);
+	for (var i = 0; i < nm; i++) {
+	    var levels = [];
+	    var ls1 = mls1[i] || emptyMetaLevel;
+	    var ls2 = mls2[i] || emptyMetaLevel;
+	    var nl = Math.min(ls1.length, ls2.length - 1);
+	    for (var j = 0; j < nl; j++) {
+		var p1 = ls1[j] || emptyLevel;
+		var subs = emptyMatcher;
+		var advs = emptyMatcher;
+		for (var k = j + 1; k < ls2.length; k++) {
+		    var p2 = ls2[k] || emptyLevel;
+		    subs = union(subs, intersect(p1.subscriptions, p2.advertisements));
+		    advs = union(advs, intersect(p1.advertisements, p2.subscriptions));
+		}
+		maybePushLevel(levels, j, new GestaltLevel(subs, advs));
+	    }
+	    maybePushMetaLevel(metaLevels, i, levels);
+	}
+	return new Gestalt(metaLevels);
     };
 
     Gestalt.prototype.match = function (perspective) {
@@ -1314,13 +1337,15 @@ function Routing(exports) {
 	var nm = Math.min(this.metaLevels.length, perspective.metaLevels.length);
 	for (var i = 0; i < nm; i++) {
 	    var ls1 = this.metaLevels[i] || emptyMetaLevel;
-	    var ls2 = smearLevels(perspective.metaLevels[i] || emptyMetaLevel);
-	    var nl = Math.min(ls1.length, ls2.length);
+	    var ls2 = perspective.metaLevels[i] || emptyMetaLevel;
+	    var nl = Math.min(ls1.length, ls2.length - 1);
 	    for (var j = 0; j < nl; j++) {
 		var p1 = ls1[j] || emptyLevel;
-		var p2 = ls2[j] || emptyLevel;
-		matchMatcher(p1.subscriptions, p2.advertisements, pids);
-		matchMatcher(p1.advertisements, p2.subscriptions, pids);
+		for (var k = j + 1; k < ls2.length; k++) {
+		    var p2 = ls2[k] || emptyLevel;
+		    matchMatcher(p1.subscriptions, p2.advertisements, pids);
+		    matchMatcher(p1.advertisements, p2.subscriptions, pids);
+		}
 	    }
 	}
 	return setToArray(pids);
