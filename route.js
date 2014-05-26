@@ -461,17 +461,9 @@ function Routing(exports) {
     function erasePath(o1, o2) {
 	return walk(o1, o2);
 
-	function cofinitePattern() {
-	    die("Cofinite pattern required");
-	}
-
 	function walk(r1, r2) {
 	    if (is_emptyMatcher(r1)) {
-		if (is_emptyMatcher(r2)) {
-		    return emptyMatcher;
-		} else {
-		    cofinitePattern();
-		}
+		return emptyMatcher;
 	    } else {
 		if (is_emptyMatcher(r2)) {
 		    return r1;
@@ -482,7 +474,7 @@ function Routing(exports) {
 		if (r2 instanceof $WildcardSequence) {
 		    return rwildseq(walk(r1.matcher, r2.matcher));
 		}
-		cofinitePattern();
+		r1 = expandWildseq(r1.matcher);
 	    } else if (r2 instanceof $WildcardSequence) {
 		r2 = expandWildseq(r2.matcher);
 	    }
@@ -501,18 +493,10 @@ function Routing(exports) {
 		    var k1 = r1.get(key);
 		    var k2 = r2.get(key);
 		    var updatedK;
-		    if (is_emptyMatcher(k1)) {
-			if (is_emptyMatcher(k2)) {
-			    updatedK = emptyMatcher;
-			} else {
-			    cofinitePattern();
-			}
+		    if (is_emptyMatcher(k2)) {
+			updatedK = walkWild(key, k1, w2);
 		    } else {
-			if (is_emptyMatcher(k2)) {
-			    updatedK = walkWild(key, k1, w2);
-			} else {
-			    updatedK = walk(k1, k2);
-			}
+			updatedK = walk(k1, k2);
 		    }
 		    // Here we ensure a "minimal" remainder in cases
 		    // where after an erasure, a particular key's
