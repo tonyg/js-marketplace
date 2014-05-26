@@ -1326,15 +1326,15 @@ function Routing(exports) {
 	return this.mapZip(path, Math.max, straightGestaltLevelOp(erasePath));
     };
 
-    function mapLevels(inputMetaLevels, f, emptyCheck, emptyLevel) {
+    function mapLevels(inputMetaLevels, f, emptyCheck, inputEmptyLevel, outputEmptyLevel) {
 	var outputMetaLevels = [];
 	for (var i = 0; i < inputMetaLevels.length; i++) {
 	    var ls = inputMetaLevels[i];
 	    var levels = [];
 	    for (var j = 0; j < ls.length; j++) {
-		var p = f(ls[j] || emptyLevel);
+		var p = f(ls[j] || inputEmptyLevel);
 		if (!emptyCheck(p)) {
-		    while (levels.length < j) levels.push(emptyLevel);
+		    while (levels.length < j) levels.push(outputEmptyLevel);
 		    levels.push(p);
 		}
 	    }
@@ -1351,7 +1351,7 @@ function Routing(exports) {
 	    return new GestaltLevel(f(p.subscriptions), f(p.advertisements));
 	}, function (p) {
 	    return p.isEmpty();
-	}, emptyLevel));
+	}, emptyLevel, emptyLevel));
     };
 
     Gestalt.prototype.stripLabel = function () {
@@ -1389,7 +1389,7 @@ function Routing(exports) {
 		    serializeMatcher(p.advertisements, serializeSuccess)];
 	}, function (pr) {
 	    return pr.length === 2 && pr[0].length === 0 && pr[1].length === 0;
-	}, [[],[]])];
+	}, emptyLevel, [[],[]])];
     };
 
     function deserializeGestalt(r) {
@@ -1400,7 +1400,7 @@ function Routing(exports) {
 				    deserializeMatcher(pr[1], deserializeSuccess));
 	}, function (p) {
 	    return p.isEmpty();
-	}, emptyLevel));
+	}, [[],[]], emptyLevel));
     }
 
     ///////////////////////////////////////////////////////////////////////////
