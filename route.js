@@ -1292,8 +1292,9 @@ function Routing(exports) {
 	var result = shallowCopyArray(levels);
 	if (result.length > 0) result.shift();
 	for (var i = result.length - 2; i >= 0; i--) {
-	    result[i].subscriptions = union(result[i].subscriptions, result[i+1].subscriptions);
-	    result[i].advertisements = union(result[i].advertisements, result[i+1].advertisements);
+	    result[i] =
+		new GestaltLevel(union(result[i].subscriptions, result[i+1].subscriptions),
+				 union(result[i].advertisements, result[i+1].advertisements));
 	}
 	return result;
     };
