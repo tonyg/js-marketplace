@@ -613,7 +613,13 @@ function Routing(exports) {
 		    r = r.get(__);
 		}
 	    } else {
-		var key = JSON.stringify(v);
+		var key;
+		try {
+		    key = JSON.stringify(v);
+		} catch (exn) {
+		    // For example, v might be cyclic, as in DOM events.
+		    key = null;
+		}
 		if (key in r.entries) {
 		    r = r.get(key);
 		} else {
