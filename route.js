@@ -1166,6 +1166,9 @@ function Routing(exports) {
 	return this.getMetaLevel(metaLevel)[level] || emptyLevel;
     };
 
+    Gestalt.prototype.metaLevelCount = function () { return this.metaLevels.length; };
+    Gestalt.prototype.levelCount = function (n) { return this.getMetaLevel(n).length; };
+
     Gestalt.prototype.matchValue = function (body, metaLevel, isFeedback) {
 	var levels = this.getMetaLevel(metaLevel);
 	var pids = {};
