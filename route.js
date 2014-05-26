@@ -1059,7 +1059,7 @@ function Routing(exports) {
 	function walk(m) {
 	    if (is_emptyMatcher(m)) return [];
 	    if (m instanceof $WildcardSequence) {
-		return ["...)", m.matcher];
+		return ["...)", walk(m.matcher)];
 	    }
 	    if (m instanceof $Success) {
 		return ["", serializeSuccess(m.value)];
