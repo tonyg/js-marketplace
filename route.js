@@ -78,6 +78,13 @@ function Routing(exports) {
 	return key in this.entries;
     };
 
+    $Dict.prototype.sortedKeys = function () {
+	var ks = [];
+	for (var k in this.entries) ks.push(k);
+	ks.sort();
+	return ks;
+    }
+
     function is_emptyMatcher(m) {
 	return (m === emptyMatcher);
     }
@@ -1032,7 +1039,9 @@ function Routing(exports) {
 	    }
 
 	    var needSep = false;
-	    for (var key in m.entries) {
+	    var keys = m.sortedKeys();
+	    for (var keyi = 0; keyi < keys.length; keyi++) {
+		var key = keys[keyi];
 		var k = m.entries[key];
 		if (needSep) {
 		    acc.push("\n");
