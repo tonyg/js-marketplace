@@ -504,10 +504,15 @@ function Routing(exports) {
 		    // continuation. TODO: the matcherEquals check may
 		    // be expensive. If so, how can it be made
 		    // cheaper?
-		    if (is_keyOpen(key) || is_keyClose(key)) {
-			// The continuation, even if syntactically
-			// identical to the wildcard, doesn't act the
-			// same way, so we shouldn't merge it.
+		    if (is_keyOpen(key)) {
+			rupdateInplace(target, key,
+				       ((updatedK instanceof $WildcardSequence) &&
+					matcherEquals(updatedK.matcher, w))
+				       ? emptyMatcher
+				       : updatedK);
+		    } else if (is_keyClose(key)) {
+			// We take care of this case later, after the
+			// target is fully constructed/rebuilt.
 			rupdateInplace(target, key, updatedK);
 		    } else {
 			rupdateInplace(target, key,
