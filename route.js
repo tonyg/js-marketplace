@@ -1147,7 +1147,7 @@ function Routing(exports) {
     function crossedGestaltLevelOp(op) {
 	return function (p1, p2) {
 	    return new GestaltLevel(op(p1.subscriptions, p2.advertisements),
-				    op(p2.subscriptions, p1.advertisements));
+				    op(p1.advertisements, p2.subscriptions));
 	};
     };
 
