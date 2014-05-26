@@ -78,30 +78,54 @@ dumpG(r.simpleGestalt(false, "A", 2, 2));
 dumpG(r.simpleGestalt(true, "B", 2, 2));
 dumpG(r.simpleGestalt(false, "A", 2, 2).union(r.simpleGestalt(true, "B", 2, 2)));
 
-console.log();
-dump(r.simpleGestalt(false, "A", 0, 0).label(123).matchValue("A", 0, false));
-dump(r.simpleGestalt(false, "A", 0, 1).label(123).matchValue("A", 0, false));
-dump(r.simpleGestalt(false, "A", 0, 2).label(123).matchValue("A", 0, false));
-dump(r.simpleGestalt(false, "A", 2, 0).label(123).matchValue("A", 0, false));
-dump(r.simpleGestalt(false, "A", 2, 1).label(123).matchValue("A", 0, false));
-dump(r.simpleGestalt(false, "A", 2, 2).label(123).matchValue("A", 0, false));
+(function () {
+    function check1(i, j, n) {
+	var result = r.simpleGestalt(false, "A", i, j).label(123).matchValue("A", n, false);
+	dump([i === n ? result.length === 1 && result[0] === 123 : result.length === 0,
+	      i, j, n, result]);
+    }
+    function metaLevelCheck(n) {
+	console.log("Checking message matching at metaLevel " + n);
+	check1(0, 0, n);
+	check1(0, 1, n);
+	check1(0, 2, n);
+	check1(2, 0, n);
+	check1(2, 1, n);
+	check1(2, 2, n);
+	console.log();
+    }
+    metaLevelCheck(0);
+    metaLevelCheck(1);
+    metaLevelCheck(2);
+})();
 
-console.log();
-dump(r.simpleGestalt(false, "A", 0, 0).label(123).matchValue("A", 1, false));
-dump(r.simpleGestalt(false, "A", 0, 1).label(123).matchValue("A", 1, false));
-dump(r.simpleGestalt(false, "A", 0, 2).label(123).matchValue("A", 1, false));
-dump(r.simpleGestalt(false, "A", 2, 0).label(123).matchValue("A", 1, false));
-dump(r.simpleGestalt(false, "A", 2, 1).label(123).matchValue("A", 1, false));
-dump(r.simpleGestalt(false, "A", 2, 2).label(123).matchValue("A", 1, false));
+(function () {
+    function check1(i, j, n) {
+	var observer = r.simpleGestalt(true, r.__, i, n).label("observer");
+	var observed = r.simpleGestalt(false, "A", i, j).label("observed");
+	var resultM = observed.filter(observer);
+	var resultL = observed.match(observer);
+	dump([ (j < n
+		? !resultM.isEmpty() && resultL.length === 1 && resultL[0] === "observer"
+		: resultM.isEmpty() && resultL.length === 0),
+	       i, j, n, resultL]);
+    }
+    function levelCheck(n) {
+	console.log("Checking gestalt filtering at level " + n);
+	check1(0, 0, n);
+	check1(0, 1, n);
+	check1(0, 2, n);
+	check1(2, 0, n);
+	check1(2, 1, n);
+	check1(2, 2, n);
+	console.log();
+    }
+    levelCheck(0);
+    levelCheck(1);
+    levelCheck(2);
+})();
 
-console.log();
-dump(r.simpleGestalt(false, "A", 0, 0).label(123).matchValue("A", 2, false));
-dump(r.simpleGestalt(false, "A", 0, 1).label(123).matchValue("A", 2, false));
-dump(r.simpleGestalt(false, "A", 0, 2).label(123).matchValue("A", 2, false));
-dump(r.simpleGestalt(false, "A", 2, 0).label(123).matchValue("A", 2, false));
-dump(r.simpleGestalt(false, "A", 2, 1).label(123).matchValue("A", 2, false));
-dump(r.simpleGestalt(false, "A", 2, 2).label(123).matchValue("A", 2, false));
-
+console.log("Checking matcher equality");
 dump(r.matcherEquals(mAny, mAAny) === false);
 dump(r.matcherEquals(mAny, mAny) === true);
 dump(r.matcherEquals(mAAny, mAAny) === true);
@@ -192,4 +216,19 @@ dump(r.matcherKeys(r.project(r.project(r.union(r.compilePattern(r.arrayToSet(['A
     console.log(JSON.stringify(S));
     dumpG(r.deserializeGestalt(S));
     dump(G.equals(r.deserializeGestalt(S)) === true);
+})();
+
+(function () {
+    console.log("complex erasure");
+    var A = r.compilePattern(r.arrayToSet(['A']), r.__);
+    var B = r.union(r.compilePattern(r.arrayToSet(['B']), [[[["foo"]]]]),
+		    r.compilePattern(r.arrayToSet(['B']), [[[["bar"]]]]));
+    var R0 = r.union(A, B);
+    var R1a = r.erasePath(R0, B);
+    var R1b = r.erasePath(R0, A);
+    dumpM(R0);
+    dumpM(R1a);
+    dumpM(R1b);
+    dump(r.matcherEquals(R1a, A) === true);
+    dump(r.matcherEquals(R1b, B) === true);
 })();
