@@ -1,11 +1,11 @@
 // DOM fragment display driver
 
 function spawnDOMDriver() {
-    var d = new DemandMatcher(["DOM", __, __, __], 0, {demandSideIsSubscription: false});
-    d.onDemandIncrease = function (r) {
-	var selector = r.pattern[1];
-	var fragmentClass = r.pattern[2];
-	var fragmentSpec = r.pattern[3];
+    var d = new DemandMatcher(["DOM", _$, _$, _$], 0, {demandSideIsSubscription: false});
+    d.onDemandIncrease = function (captures) {
+	var selector = captures[0];
+	var fragmentClass = captures[1];
+	var fragmentSpec = captures[2];
 	World.spawn(new DOMFragment(selector, fragmentClass, fragmentSpec),
 		    [sub(["DOM", selector, fragmentClass, fragmentSpec]),
 		     sub(["DOM", selector, fragmentClass, fragmentSpec], 0, 1)]);
@@ -28,11 +28,8 @@ DOMFragment.prototype.boot = function () {
 	World.spawn({
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
-		    var needed = false;
-		    for (var i = 0; i < e.routes.length; i++) {
-			needed = needed || (e.routes[i].level === 0); // find participant peers
-		    }
-		    if (e.routes.length > 0 && !needed) {
+		    var level = e.gestalt.getLevel(1, 0); // find participant peers
+		    if (!e.gestalt.isEmpty() && level.isEmpty()) {
 			World.shutdownWorld();
 		    }
 		}
@@ -42,7 +39,7 @@ DOMFragment.prototype.boot = function () {
 };
 
 DOMFragment.prototype.handleEvent = function (e) {
-    if (e.type === "routes" && e.routes.length === 0) {
+    if (e.type === "routes" && e.gestalt.isEmpty()) {
 	for (var i = 0; i < this.nodes.length; i++) {
 	    var n = this.nodes[i];
 	    n.parentNode.removeChild(n);

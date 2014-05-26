@@ -1,121 +1,34 @@
-/*---------------------------------------------------------------------------*/
-/* Unification */
-
-var __ = new Object(); /* wildcard marker */
-__.__ = "__";
-
-function unificationFailed() {
-    throw {unificationFailed: true};
-}
-
-function unify1(a, b) {
-    var i;
-
-    if (a === __) return b;
-    if (b === __) return a;
-
-    if (a === b) return a;
-
-    if (Array.isArray(a) && Array.isArray(b)) {
-	if (a.length !== b.length) unificationFailed();
-	var result = new Array(a.length);
-	for (i = 0; i < a.length; i++) {
-	    result[i] = unify1(a[i], b[i]);
-	}
-	return result;
-    }
-
-    if (typeof a === "object" && typeof b === "object") {
-	/* TODO: consider other kinds of matching. I've chosen to
-	   require any field mentioned by either side to be present in
-	   both. Does that make sense? */
-	var result = ({});
-	for (i in a) { if (a.hasOwnProperty(i)) result[i] = true; }
-	for (i in b) { if (b.hasOwnProperty(i)) result[i] = true; }
-	for (i in result) {
-	    if (result.hasOwnProperty(i)) {
-		result[i] = unify1(a[i], b[i]);
-	    }
-	}
-	return result;
-    }
-
-    unificationFailed();
-}
-
-function unify(a, b) {
-    try {
-	// console.log("unify", JSON.stringify(a), JSON.stringify(b));
-	return {result: unify1(a, b)};
-    } catch (e) {
-	if (e.unificationFailed) return undefined;
-	throw e;
-    }
-}
-
-function anyUnify(aa, bb) {
-    for (var i = 0; i < aa.length; i++) {
-	for (var j = 0; j < bb.length; j++) {
-	    if (unify(aa[i], bb[j])) return true;
-	}
-    }
-    return false;
-}
+// TODO: trigger-guards as per minimart
 
 /*---------------------------------------------------------------------------*/
 /* Events and Actions */
 
-function Route(isSubscription, pattern, metaLevel, level) {
-    this.isSubscription = isSubscription;
-    this.pattern = pattern;
-    this.metaLevel = (metaLevel === undefined) ? 0 : metaLevel;
-    this.level = (level === undefined) ? 0 : level;
-}
-
-Route.prototype.drop = function () {
-    if (this.metaLevel === 0) { return null; }
-    return new Route(this.isSubscription, this.pattern, this.metaLevel - 1, this.level);
-};
-
-Route.prototype.lift = function () {
-    return new Route(this.isSubscription, this.pattern, this.metaLevel + 1, this.level);
-};
-
-Route.prototype.toJSON = function () {
-    return [this.isSubscription ? "sub" : "pub", this.pattern, this.metaLevel, this.level];
-};
-
-Route.prototype.visibilityToRoute = function (other, overrideOtherLevel) {
-    if (!this.isSubscription !== other.isSubscription) return undefined;
-    if (this.metaLevel !== other.metaLevel) return undefined;
-    if (this.level >= (overrideOtherLevel || other.level)) return undefined;
-    return unify(this.pattern, other.pattern); // returns undefined if unification fails
-};
-
-Route.fromJSON = function (j) {
-    switch (j[0]) {
-    case "sub": return new Route(true, j[1], j[2], j[3]);
-    case "pub": return new Route(false, j[1], j[2], j[3]);
-    default: throw { message: "Invalid JSON-encoded route: " + JSON.stringify(j) };
-    }
-};
+var __ = route.__;
+var _$ = route._$;
 
 function sub(pattern, metaLevel, level) {
-    return new Route(true, pattern, metaLevel, level);
+    return route.simpleGestalt(false, pattern, metaLevel, level);
 }
 
 function pub(pattern, metaLevel, level) {
-    return new Route(false, pattern, metaLevel, level);
+    return route.simpleGestalt(true, pattern, metaLevel, level);
 }
 
-function spawn(behavior, initialRoutes) {
+function spawn(behavior, initialGestalts) {
     return { type: "spawn",
 	     behavior: behavior,
-	     initialRoutes: (initialRoutes === undefined) ? [] : initialRoutes };
+	     initialGestalt: route.gestaltUnion(initialGestalts || []) };
 }
 
-function updateRoutes(routes) {
-    return { type: "routes", routes: routes };
+function updateRoutes(gestalts) {
+    return { type: "routes", gestalt: route.gestaltUnion(gestalts) };
+}
+
+function pendingRoutingUpdate(aggregate, affectedSubgestalt, knownTarget) {
+    return { type: "pendingRoutingUpdate",
+	     aggregate: aggregate,
+	     affectedSubgestalt: affectedSubgestalt,
+	     knownTarget: knownTarget };
 }
 
 function sendMessage(m, metaLevel, isFeedback) {
@@ -130,103 +43,52 @@ function shutdownWorld() {
 }
 
 /*---------------------------------------------------------------------------*/
-/* Metafunctions */
-
-function dropRoutes(routes) {
-    var result = [];
-    for (var i = 0; i < routes.length; i++) {
-	var r = routes[i].drop();
-	if (r) { result.push(r); }
-    }
-    return result;
-}
-
-function liftRoutes(routes) {
-    var result = [];
-    for (var i = 0; i < routes.length; i++) {
-	result.push(routes[i].lift());
-    }
-    return result;
-}
-
-function intersectRoutes(rs1, rs2) {
-    var result = [];
-    for (var i = 0; i < rs1.length; i++) {
-	for (var j = 0; j < rs2.length; j++) {
-	    var ri = rs1[i];
-	    var rj = rs2[j];
-	    var u = ri.visibilityToRoute(rj);
-	    if (u) {
-		var rk = new Route(ri.isSubscription, u.result, ri.metaLevel, ri.level);
-		result.push(rk);
-	    }
-	}
-    }
-    return result;
-}
-
-function filterEvent(e, routes) {
-    switch (e.type) {
-    case "routes":
-	return updateRoutes(intersectRoutes(e.routes, routes));
-    case "message":
-	for (var i = 0; i < routes.length; i++) {
-	    var r = routes[i];
-	    if (e.metaLevel === r.metaLevel
-		&& e.isFeedback === !r.isSubscription
-		&& unify(e.message, r.pattern))
-	    {
-		return e;
-	    }
-	}
-	return null;
-    default:
-	throw { message: "Event type " + e.type + " not filterable",
-		event: e };
-    }
-}
-
-/*---------------------------------------------------------------------------*/
 /* Configurations */
 
 function World(bootFn) {
-    this.nextPid = 0;
     this.alive = true;
     this.eventQueue = [];
+    this.runnablePids = {};
+    this.partialGestalt = route.emptyGestalt; // Only gestalt from local processes
+    this.fullGestalt = route.emptyGestalt ;; // partialGestalt unioned with downwardGestalt
     this.processTable = {};
-    this.downwardRoutes = [];
+    this.downwardGestalt = route.emptyGestalt;
     this.processActions = [];
-    this.activePid = null;
-    this.stepperId = null;
     this.asChild(-1, bootFn, true);
 }
 
 /* Class state / methods */
 
+World.nextPid = 0;
+
 World.stack = [];
 
 World.current = function () {
-    return World.stack[World.stack.length - 1];
+    return World.stack[World.stack.length - 1][0];
+};
+
+World.activePid = function () {
+    return World.stack[World.stack.length - 1][1];
 };
 
 World.send = function (m, metaLevel, isFeedback) {
-    World.current().enqueueAction(sendMessage(m, metaLevel, isFeedback));
+    World.current().enqueueAction(World.activePid(), sendMessage(m, metaLevel, isFeedback));
 };
 
-World.updateRoutes = function (routes) {
-    World.current().enqueueAction(updateRoutes(routes));
+World.updateRoutes = function (gestalts) {
+    World.current().enqueueAction(World.activePid(), updateRoutes(gestalts));
 };
 
-World.spawn = function (behavior, initialRoutes) {
-    World.current().enqueueAction(spawn(behavior, initialRoutes));
+World.spawn = function (behavior, initialGestalts) {
+    World.current().enqueueAction(World.activePid(), spawn(behavior, initialGestalts));
 };
 
 World.exit = function (exn) {
-    World.current().killActive(exn);
+    World.current().kill(World.activePid(), exn);
 };
 
 World.shutdownWorld = function () {
-    World.current().enqueueAction(shutdownWorld());
+    World.current().enqueueAction(World.activePid(), shutdownWorld());
 };
 
 World.withWorldStack = function (stack, f) {
@@ -245,14 +107,15 @@ World.withWorldStack = function (stack, f) {
 
 World.wrap = function (f) {
     var savedStack = World.stack.slice();
-    var savedPid = World.current().activePid;
     return function () {
 	var actuals = arguments;
 	return World.withWorldStack(savedStack, function () {
-	    var result = World.current().asChild(savedPid, function () {
+	    var result = World.current().asChild(World.activePid(), function () {
 		return f.apply(null, actuals);
 	    });
-	    World.stack[0].startStepping();
+	    for (var i = World.stack.length - 1; i >= 0; i--) {
+		World.stack[i][0].markPidRunnable(World.stack[i][1]);
+	    }
 	    return result;
 	});
     };
@@ -260,40 +123,28 @@ World.wrap = function (f) {
 
 /* Instance methods */
 
-World.prototype.killActive = function (exn) {
-    this.kill(this.activePid, exn);
+World.prototype.enqueueAction = function (pid, action) {
+    this.processActions.push([pid, action]);
 };
 
-World.prototype.enqueueAction = function (action) {
-    this.processActions.push([this.activePid, action]);
+// The code is written to maintain the runnablePids set carefully, to
+// ensure we can locally decide whether we're inert or not without
+// having to search the whole deep process tree.
+World.prototype.isInert = function () {
+    return this.eventQueue.length === 0
+	&& this.processActions.length === 0
+	&& route.is_emptySet(this.runnablePids);
 };
 
-World.prototype.isQuiescent = function () {
-    return this.eventQueue.length === 0 && this.processActions.length === 0;
+World.prototype.markPidRunnable = function (pid) {
+    this.runnablePids[pid] = [pid];
 };
 
 World.prototype.step = function () {
     this.dispatchEvents();
     this.performActions();
-    return this.alive && (this.stepChildren() || !this.isQuiescent());
-};
-
-World.prototype.startStepping = function () {
-    var self = this;
-    if (this.stepperId) return;
-    if (this.step()) {
-	this.stepperId = setTimeout(function () {
-	    self.stepperId = null;
-	    self.startStepping();
-	}, 0);
-    }
-};
-
-World.prototype.stopStepping = function () {
-    if (this.stepperId) {
-	clearTimeout(this.stepperId);
-	this.stepperId = null;
-    }
+    this.stepChildren();
+    return this.alive && !this.isInert();
 };
 
 World.prototype.asChild = function (pid, f, omitLivenessCheck) {
@@ -302,17 +153,15 @@ World.prototype.asChild = function (pid, f, omitLivenessCheck) {
 	return;
     }
 
-    World.stack.push(this);
+    World.stack.push([this, pid]);
     var result = null;
-    this.activePid = pid;
     try {
 	result = f();
     } catch (e) {
 	this.kill(pid, e);
     }
-    this.activePid = null;
-    if (World.stack.pop() !== this) {
-	throw { message: "Internal error: World stack imbalance" };
+    if (World.stack.pop()[0] !== this) {
+	throw new Error("Internal error: World stack imbalance");
     }
     return result;
 };
@@ -328,19 +177,21 @@ World.prototype.kill = function (pid, exn) {
 	this.asChild(pid, function () { return p.behavior.trapexit(exn); });
     }
     delete this.processTable[pid];
-    this.issueRoutingUpdate();
+    if (p) {
+	this.applyAndIssueRoutingUpdate(p.gestalt, route.emptyGestalt);
+    }
 };
 
 World.prototype.stepChildren = function () {
-    var someChildBusy = false;
-    for (var pid in this.processTable) {
+    var pids = this.runnablePids;
+    this.runnablePids = {};
+    for (var pid in pids) {
 	var p = this.processTable[pid];
-	if (p.behavior.step /* exists, haven't called it yet */) {
-	    var childBusy = this.asChild(pid, function () { return p.behavior.step() });
-	    someChildBusy = someChildBusy || childBusy;
+	if (p && p.behavior.step /* exists, haven't called it yet */) {
+	    var childBusy = this.asChild(pid | 0, function () { return p.behavior.step() });
+	    if (childBusy) this.markPidRunnable(pid);
 	}
     }
-    return someChildBusy;
 };
 
 World.prototype.performActions = function () {
@@ -364,18 +215,25 @@ World.prototype.dispatchEvents = function () {
 World.prototype.performAction = function (pid, action) {
     switch (action.type) {
     case "spawn":
-	var pid = this.nextPid++;
-	this.processTable[pid] = { routes: action.initialRoutes, behavior: action.behavior };
-	if (action.behavior.boot) { this.asChild(pid, function () { action.behavior.boot() }); }
-	this.issueRoutingUpdate();
+	var pid = World.nextPid++;
+	var newGestalt = action.initialGestalt.label(pid);
+	this.processTable[pid] = { gestalt: newGestalt, behavior: action.behavior };
+	if (action.behavior.boot) {
+	    this.asChild(pid, function () { action.behavior.boot() });
+	    this.markPidRunnable(pid);
+	}
+	this.applyAndIssueRoutingUpdate(route.emptyGestalt, newGestalt, pid);
 	break;
     case "routes":
 	if (pid in this.processTable) {
 	    // it may not be: this might be the routing update from a
 	    // kill of the process
-	    this.processTable[pid].routes = action.routes;
+	    var oldGestalt = this.processTable[pid].gestalt;
+	    var newGestalt = action.gestalt.label(pid|0);
+	    // ^ pid|0: convert pid from string (table key!) to integer
+	    this.processTable[pid].gestalt = newGestalt;
+	    this.applyAndIssueRoutingUpdate(oldGestalt, newGestalt, pid);
 	}
-	this.issueRoutingUpdate();
 	break;
     case "message":
 	if (action.metaLevel === 0) {
@@ -389,179 +247,138 @@ World.prototype.performAction = function (pid, action) {
 	World.exit();
 	break;
     default:
-	throw { message: "Action type " + action.type + " not understood",
-		action: action };
+	var exn = new Error("Action type " + action.type + " not understood");
+	exn.action = action;
+	throw exn;
     }
 };
 
-World.prototype.aggregateRoutes = function (base) {
-    var acc = base.slice();
-    for (var pid in this.processTable) {
-	var p = this.processTable[pid];
-	for (var i = 0; i < p.routes.length; i++) {
-	    acc.push(p.routes[i]);
-	}
-    }
-    return acc;
+World.prototype.updateFullGestalt = function () {
+    this.fullGestalt = this.partialGestalt.union(this.downwardGestalt);
 };
 
-World.prototype.issueLocalRoutingUpdate = function () {
-    this.eventQueue.push(updateRoutes(this.aggregateRoutes(this.downwardRoutes)));
+World.prototype.issueLocalRoutingUpdate = function (affectedSubgestalt, knownTarget) {
+    this.eventQueue.push(pendingRoutingUpdate(this.fullGestalt,
+					      affectedSubgestalt,
+					      knownTarget));
 };
 
-World.prototype.issueRoutingUpdate = function () {
-    this.issueLocalRoutingUpdate();
-    World.updateRoutes(dropRoutes(this.aggregateRoutes([])));
+World.prototype.applyAndIssueRoutingUpdate = function (oldg, newg, knownTarget) {
+    knownTarget = typeof knownTarget === 'undefined' ? null : knownTarget;
+    this.partialGestalt = this.partialGestalt.erasePath(oldg).union(newg);
+    this.updateFullGestalt();
+    this.issueLocalRoutingUpdate(oldg.union(newg), knownTarget);
+    World.updateRoutes([this.partialGestalt.drop()]);
 };
 
 World.prototype.dispatchEvent = function (e) {
-    for (var pid in this.processTable) {
-	var p = this.processTable[pid];
-	var e1 = filterEvent(e, p.routes);
-	// console.log("filtering", e, p.routes, e1);
-	if (e1) { this.asChild(pid, function () { p.behavior.handleEvent(e1) }); }
+    switch (e.type) {
+    case "pendingRoutingUpdate":
+	var pids = e.affectedSubgestalt.match(e.aggregate);
+	if (e.knownTarget !== null) pids.unshift(e.knownTarget);
+	for (var i = 0; i < pids.length; i++) {
+	    var pid = pids[i];
+	    if (pid === "out") console.warning("Would have delivered a routing update to environment");
+	    var p = this.processTable[pid];
+	    if (p) {
+		var g = e.aggregate.filter(p.gestalt);
+		this.asChild(pid, function () { p.behavior.handleEvent(updateRoutes([g])) });
+		this.markPidRunnable(pid);
+	    }
+	}
+	break;
+
+    case "message":
+	var pids = this.partialGestalt.matchValue(e.message, e.metaLevel, e.isFeedback);
+	for (var i = 0; i < pids.length; i++) {
+	    var pid = pids[i];
+	    var p = this.processTable[pid];
+	    this.asChild(pid, function () { p.behavior.handleEvent(e) });
+	    this.markPidRunnable(pid);
+	}
+	break;
+
+    default:
+	var exn = new Error("Event type " + e.type + " not dispatchable");
+	exn.event = e;
+	throw exn;
     }
 };
 
 World.prototype.handleEvent = function (e) {
     switch (e.type) {
     case "routes":
-	this.downwardRoutes = liftRoutes(e.routes);
-	this.issueLocalRoutingUpdate();
+	var oldDownward = this.downwardGestalt;
+	this.downwardGestalt = e.gestalt.label("out").lift();
+	this.updateFullGestalt();
+	this.issueLocalRoutingUpdate(oldDownward.union(this.downwardGestalt), null);
 	break;
     case "message":
 	this.eventQueue.push(sendMessage(e.message, e.metaLevel + 1, e.isFeedback));
 	break;
     default:
-	throw { message: "Event type " + e.type + " not understood",
-		event: e };
+	var exn = new Error("Event type " + e.type + " not understood");
+	exn.event = e;
+	throw exn;
     }
-};
-
-/*---------------------------------------------------------------------------*/
-/* Utilities: detecting presence/absence events via routing events */
-
-function PresenceDetector(initialRoutes) {
-    this.state = this._digestRoutes(initialRoutes === undefined ? [] : initialRoutes);
-}
-
-PresenceDetector.prototype._digestRoutes = function (routes) {
-    var newState = {};
-    for (var i = 0; i < routes.length; i++) {
-	newState[JSON.stringify(routes[i].toJSON())] = routes[i];
-    }
-    return newState;
-};
-
-PresenceDetector.prototype.getRouteList = function () {
-    var rs = [];
-    for (var k in this.state) { rs.push(this.state[k]); }
-    return rs;
-};
-
-PresenceDetector.prototype.handleRoutes = function (routes) {
-    var added = [];
-    var removed = [];
-    var newState = this._digestRoutes(routes);
-    for (var k in newState) {
-	if (!(k in this.state)) {
-	    added.push(newState[k]);
-	} else {
-	    delete this.state[k];
-	}
-    }
-    for (var k in this.state) {
-	removed.push(this.state[k]);
-    }
-    this.state = newState;
-    return { added: added, removed: removed };
-};
-
-PresenceDetector.prototype.presenceExistsFor = function (probeRoute) {
-    for (var k in this.state) {
-	var existingRoute = this.state[k];
-	if (existingRoute.visibleToRoute(probeRoute, Infinity) &&
-	    (existingRoute.level === probeRoute.level))
-	{
-	    return true;
-	}
-    }
-    return false;
 };
 
 /*---------------------------------------------------------------------------*/
 /* Utilities: matching demand for some service */
 
-function DemandMatcher(pattern, metaLevel, options) {
+function DemandMatcher(projection, metaLevel, options) {
     options = $.extend({
 	demandLevel: 0,
 	supplyLevel: 0,
 	demandSideIsSubscription: true
     }, options);
-    this.pattern = pattern;
+    this.pattern = route.projectionToPattern(projection);
+    this.projectionSpec = route.compileProjection(projection);
     this.metaLevel = metaLevel;
     this.demandLevel = options.demandLevel;
     this.supplyLevel = options.supplyLevel;
     this.demandSideIsSubscription = options.demandSideIsSubscription;
-    this.onDemandIncrease = function (r) {
-	console.error("Unhandled increase in demand for route", r);
+    this.onDemandIncrease = function (captures) {
+	console.error("Unhandled increase in demand for route", captures);
     };
-    this.onSupplyDecrease = function (r) {
-	console.error("Unhandled decrease in supply for route", r);
+    this.onSupplyDecrease = function (captures) {
+	console.error("Unhandled decrease in supply for route", captures);
     };
-    this.state = new PresenceDetector();
+    this.currentDemand = {};
+    this.currentSupply = {};
 }
 
 DemandMatcher.prototype.boot = function () {
-    World.updateRoutes([this.computeDetector(true),
-			this.computeDetector(false)]);
+    var observerLevel = 1 + Math.max(this.demandLevel, this.supplyLevel);
+    World.updateRoutes([sub(this.pattern, this.metaLevel, observerLevel),
+			pub(this.pattern, this.metaLevel, observerLevel)]);
 };
 
 DemandMatcher.prototype.handleEvent = function (e) {
     if (e.type === "routes") {
-	this.handleRoutes(e.routes);
+	this.handleGestalt(e.gestalt);
     }
 };
 
-DemandMatcher.prototype.computeDetector = function (demandSide) {
-    var maxLevel = (this.demandLevel > this.supplyLevel ? this.demandLevel : this.supplyLevel);
-    return new Route(this.demandSideIsSubscription ? !demandSide : demandSide,
-		     this.pattern,
-		     this.metaLevel,
-		     maxLevel + 1);
-};
-
-DemandMatcher.prototype.handleRoutes = function (routes) {
-    var changes = this.state.handleRoutes(routes);
-    this.incorporateChanges(true, changes.added);
-    this.incorporateChanges(false, changes.removed);
-};
-
-DemandMatcher.prototype.incorporateChanges = function (isArrivals, routeList) {
-    var relevantChangeDetector = this.computeDetector(isArrivals);
-    var expectedChangeLevel = isArrivals ? this.demandLevel : this.supplyLevel;
-    var expectedPeerLevel = isArrivals ? this.supplyLevel : this.demandLevel;
-    for (var i = 0; i < routeList.length; i++) {
-	var changed = routeList[i];
-	if (changed.level != expectedChangeLevel) continue;
-	var relevantChangedN = intersectRoutes([changed], [relevantChangeDetector]);
-	if (relevantChangedN.length === 0) continue;
-	var relevantChanged = relevantChangedN[0]; /* there can be only one */
-	var peerDetector = new Route(relevantChanged.isSubscription,
-				     relevantChanged.pattern,
-				     relevantChanged.metaLevel,
-				     expectedPeerLevel + 1);
-	var peerRoutes = intersectRoutes(this.state.getRouteList(), [peerDetector]);
-	var peerExists = false;
-	for (var j = 0; j < peerRoutes.length; j++) {
-	    if (peerRoutes[j].level == expectedPeerLevel) {
-		peerExists = true;
-		break;
-	    }
-	}
-	if (isArrivals && !peerExists) { this.onDemandIncrease(relevantChanged); }
-	if (!isArrivals && peerExists) { this.onSupplyDecrease(relevantChanged); }
-    }
+DemandMatcher.prototype.handleGestalt = function (gestalt) {
+    var newDemandMatcher = gestalt.project(this.metaLevel,
+					   this.demandLevel,
+					   !this.demandSideIsSubscription,
+					   this.projectionSpec);
+    var newSupplyMatcher = gestalt.project(this.metaLevel,
+					   this.supplyLevel,
+					   this.demandSideIsSubscription,
+					   this.projectionSpec)
+    var newDemand = route.arrayToSet(route.matcherKeys(newDemandMatcher));
+    var newSupply = route.arrayToSet(route.matcherKeys(newSupplyMatcher));
+    var demandDelta = route.setSubtract(newDemand, this.currentDemand);
+    var supplyDelta = route.setSubtract(this.currentSupply, newSupply);
+    var demandIncr = route.setSubtract(demandDelta, newSupply);
+    var supplyDecr = route.setIntersect(supplyDelta, newDemand);
+    this.currentDemand = newDemand;
+    this.currentSupply = newSupply;
+    for (var k in demandIncr) this.onDemandIncrease(demandIncr[k]);
+    for (var k in supplyDecr) this.onSupplyDecrease(supplyDecr[k]);
 };
 
 /*---------------------------------------------------------------------------*/
@@ -607,27 +424,51 @@ Deduplicator.prototype.expireMessages = function () {
 function Ground(bootFn) {
     var self = this;
     this.stepperId = null;
-    this.state = new PresenceDetector();
-    World.withWorldStack([this], function () {
+    World.withWorldStack([[this, -1]], function () {
 	self.world = new World(bootFn);
     });
 }
 
 Ground.prototype.step = function () {
     var self = this;
-    return World.withWorldStack([this], function () {
+    return World.withWorldStack([[this, -1]], function () {
 	return self.world.step();
     });
 };
 
-Ground.prototype.startStepping = World.prototype.startStepping;
-Ground.prototype.stopStepping = World.prototype.stopStepping;
+Ground.prototype.checkPid = function (pid) {
+    if (pid !== -1) console.error("Weird pid in Ground markPidRunnable", pid);
+};    
 
-Ground.prototype.enqueueAction = function (action) {
+Ground.prototype.markPidRunnable = function (pid) {
+    this.checkPid(pid);
+    this.startStepping();
+};
+
+Ground.prototype.startStepping = function () {
+    var self = this;
+    if (this.stepperId) return;
+    if (this.step()) {
+	this.stepperId = setTimeout(function () {
+	    self.stepperId = null;
+	    self.startStepping();
+	}, 0);
+    }
+};
+
+Ground.prototype.stopStepping = function () {
+    if (this.stepperId) {
+	clearTimeout(this.stepperId);
+	this.stepperId = null;
+    }
+};
+
+Ground.prototype.enqueueAction = function (pid, action) {
+    this.checkPid(pid);
     if (action.type === 'routes') {
-	var added = this.state.handleRoutes(action.routes).added;
-	if (added.length > 0) {
-	    console.error("You have subscribed to a nonexistent event source.", added);
+	if (!action.gestalt.isEmpty()) {
+	    console.error("You have subscribed to a nonexistent event source.",
+			  action.gestalt.pretty());
 	}
     } else {
 	console.error("You have sent a message into the outer void.", action);

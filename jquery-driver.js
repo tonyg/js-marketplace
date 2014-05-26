@@ -2,10 +2,10 @@
 
 function spawnJQueryDriver(baseSelector, metaLevel) {
     metaLevel = metaLevel || 0;
-    var d = new DemandMatcher(["jQuery", __, __, __], metaLevel);
-    d.onDemandIncrease = function (r) {
-	var selector = r.pattern[1];
-	var eventName = r.pattern[2];
+    var d = new DemandMatcher(["jQuery", _$, _$, __], metaLevel);
+    d.onDemandIncrease = function (captures) {
+	var selector = captures[0];
+	var eventName = captures[1];
 	World.spawn(new JQueryEventRouter(baseSelector, selector, eventName, metaLevel),
 		    [pub(["jQuery", selector, eventName, __], metaLevel),
 		     pub(["jQuery", selector, eventName, __], metaLevel, 1)]);
@@ -31,7 +31,7 @@ function JQueryEventRouter(baseSelector, selector, eventName, metaLevel) {
 }
 
 JQueryEventRouter.prototype.handleEvent = function (e) {
-    if (e.type === "routes" && e.routes.length === 0) {
+    if (e.type === "routes" && e.gestalt.isEmpty()) {
 	this.computeNodes().off(this.eventName, this.handler);
 	World.exit();
     }
