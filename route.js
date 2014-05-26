@@ -162,8 +162,7 @@ function Routing(exports) {
 	    if (!(b instanceof $WildcardSequence)) return false;
 	    a = a.matcher;
 	    b = b.matcher;
-	}
-	if (b instanceof $WildcardSequence) return false;
+	} else if (b instanceof $WildcardSequence) return false;
 
 	if (a instanceof $Success) {
 	    if (!(b instanceof $Success)) return false;
