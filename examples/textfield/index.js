@@ -16,19 +16,21 @@ function spawnGui() {
 				sub(["fieldContents", __, __], 0, 1),
 				sub(["highlight", __], 0, 1)]);
 	},
+	fieldContentsSpec: route.compileProjection(["fieldContents", _$, _$]),
+	highlightSpec: route.compileProjection(["highlight", _$]),
 	handleEvent: function (e) {
 	    switch (e.type) {
 	    case "routes":
 		var text = "", pos = 0, highlight = false;
 		// BUG: escape text!
-		for (var i = 0; i < e.routes.length; i++) {
-		    var r = e.routes[i];
-		    if (r.pattern[0] === "fieldContents") {
-			text = r.pattern[1];
-			pos = r.pattern[2];
-		    } else if (r.pattern[0] === "highlight") {
-			highlight = r.pattern[1];
-		    }
+		var fc = route.matcherKeys(e.gestalt.project(this.fieldContentsSpec, true));
+		if (fc.length > 0) {
+		    text = fc[0][0];
+		    pos = fc[0][1];
+		}
+		var hl = route.matcherKeys(e.gestalt.project(this.highlightSpec, true));
+		if (hl.length > 0) {
+		    highlight = hl[0][0];
 		}
 		$("#fieldContents")[0].innerHTML = highlight
 		    ? piece(text, pos, 0, highlight[0], "normal") +
@@ -110,6 +112,7 @@ function spawnSearch() {
     World.spawn({
 	fieldContents: "",
 	highlight: false,
+	fieldContentsSpec: route.compileProjection(["fieldContents", _$, _$]),
 	boot: function () {
 	    World.updateRoutes(this.subscriptions());
 	},
@@ -134,11 +137,9 @@ function spawnSearch() {
 	handleEvent: function (e) {
 	    switch (e.type) {
 	    case "routes":
-		for (var i = 0; i < e.routes.length; i++) {
-		    var r = e.routes[i];
-		    if (r.pattern[0] === "fieldContents") {
-			this.fieldContents = r.pattern[1];
-		    }
+		var fc = route.matcherKeys(e.gestalt.project(this.fieldContentsSpec, true));
+		if (fc.length > 0) {
+		    this.fieldContents = fc[0][0];
 		}
 		this.search();
 		break;
