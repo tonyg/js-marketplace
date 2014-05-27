@@ -278,7 +278,7 @@ World.prototype.dispatchEvent = function (e) {
 	if (e.knownTarget !== null) pids.unshift(e.knownTarget);
 	for (var i = 0; i < pids.length; i++) {
 	    var pid = pids[i];
-	    if (pid === "out") console.warning("Would have delivered a routing update to environment");
+	    if (pid === "out") console.warn("Would have delivered a routing update to environment");
 	    var p = this.processTable[pid];
 	    if (p) {
 		var g = e.aggregate.filter(p.gestalt);
