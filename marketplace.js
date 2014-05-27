@@ -361,14 +361,14 @@ DemandMatcher.prototype.handleEvent = function (e) {
 };
 
 DemandMatcher.prototype.handleGestalt = function (gestalt) {
-    var newDemandMatcher = gestalt.project(this.metaLevel,
-					   this.demandLevel,
+    var newDemandMatcher = gestalt.project(this.projectionSpec,
 					   !this.demandSideIsSubscription,
-					   this.projectionSpec);
-    var newSupplyMatcher = gestalt.project(this.metaLevel,
-					   this.supplyLevel,
+					   this.metaLevel,
+					   this.demandLevel);
+    var newSupplyMatcher = gestalt.project(this.projectionSpec,
 					   this.demandSideIsSubscription,
-					   this.projectionSpec)
+					   this.metaLevel,
+					   this.supplyLevel);
     var newDemand = route.arrayToSet(route.matcherKeys(newDemandMatcher));
     var newSupply = route.arrayToSet(route.matcherKeys(newSupplyMatcher));
     var demandDelta = route.setSubtract(newDemand, this.currentDemand);

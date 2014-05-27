@@ -1176,8 +1176,8 @@ function Routing(exports) {
 	return setToArray(pids);
     };
 
-    Gestalt.prototype.project = function (metaLevel, level, getAdvertisements, spec) {
-	var l = this.getLevel(metaLevel, level);
+    Gestalt.prototype.project = function (spec, getAdvertisements, metaLevel, level) {
+	var l = this.getLevel(metaLevel | 0, level | 0);
 	var matcher = (getAdvertisements ? l.advertisements : l.subscriptions);
 	return project(matcher, spec);
     };
