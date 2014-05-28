@@ -180,20 +180,31 @@ dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
 	      dumpM(r.union(r.compilePattern(r.arrayToSet('B'), [2]),
 			    r.compilePattern(r.arrayToSet('C'), [3])))));
 
-console.log("matcherKeys on wild matchers");
-dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
-				     r.compilePattern(r.arrayToSet(['C']), [1, 3]),
-				     r.compilePattern(r.arrayToSet(['B']), [3, 4])),
-			     r.compileProjection([r._$(), r._$()]))));
-dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
-				     r.compilePattern(r.arrayToSet(['C']), [1, 3]),
-				     r.compilePattern(r.arrayToSet(['B']), [3, 4])),
-			     r.compileProjection([r.__, r._$]))));
-dump(r.matcherKeys(r.project(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
-					       r.compilePattern(r.arrayToSet(['C']), [1, 3]),
-					       r.compilePattern(r.arrayToSet(['B']), [3, 4])),
-				       r.compileProjection([r._$(), r._$()])),
-			     r.compileProjection([r.__, r._$]))));
+(function () {
+    console.log("matcherKeys on wild matchers");
+    var M = r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
+		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
+    dump(r.matcherKeys(r.project(M, r.compileProjection([r._$(), r._$()]))));
+    dump(r.matcherKeys(r.project(M, r.compileProjection([r.__, r._$]))));
+    var M2 = r.project(M, r.compileProjection([r._$(), r._$()]));
+    dump(r.matcherKeys(r.project(M2,
+				 r.compileProjection(r.__, r._$))));
+    dump(r.matcherKeys(r.project(r.compilePattern(true, [r.embeddedMatcher(M2)]),
+				 r.compileProjection([r.__, r._$]))));
+    dump(r.matcherKeys(r.project(r.compilePattern(true, [[r.embeddedMatcher(M2)]]),
+				 r.compileProjection([[r.__, r._$]]))));
+})();
+
+(function () {
+    console.log("matcherKeys using multiple-values in projections");
+    var M = r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
+		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
+    var M2 = r.project(M, r.compileProjection([r._$(), r._$()]));
+    dump(r.matcherKeys(M2));
+    dump(r.matcherKeys(r.project(M2, r.compileProjection(r._$(), r._$()))));
+})();
 
 (function () {
     console.log("serializeMatcher");

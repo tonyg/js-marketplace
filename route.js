@@ -761,9 +761,11 @@ function Routing(exports) {
 	}
     }
 
-    function compileProjection(p) {
+    function compileProjection(/* projection, projection, ... */) {
 	var acc = [];
-	walk(p);
+	for (var i = 0; i < arguments.length; i++) {
+	    walk(arguments[i]);
+	}
 	acc.push(EOA);
 	return acc;
 
@@ -819,13 +821,13 @@ function Routing(exports) {
     }
 
     function project(m, spec) {
-	return rseq(SOA, walk(false, m, 0));
+	return walk(false, m, 0);
 
 	function walk(isCapturing, m, specIndex) {
 	    if (specIndex >= spec.length) {
 		if (isCapturing) die("Bad specification: unclosed capture");
 		if (m instanceof $Success) {
-		    return rseq(EOA, rseq(EOA, rsuccess(projectSuccess(m.value))));
+		    return rseq(EOA, rsuccess(projectSuccess(m.value)));
 		} else {
 		    return emptyMatcher;
 		}
@@ -977,10 +979,10 @@ function Routing(exports) {
     }
 
     function matcherKeys(m) {
-	return walk(m, function (v, k) { return [v]; });
+	if (is_emptyMatcher(m)) return [];
+	return walkSeq(m, function (vss, vsk) { return vss; });
 
 	function walk(m, k) {
-	    if (m === null) return [];
 	    if (m instanceof $WildcardSequence) return null;
 	    if (m instanceof $Success) return [];
 	    if (m.has(__)) return null;
