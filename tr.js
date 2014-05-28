@@ -232,3 +232,22 @@ dump(r.matcherKeys(r.project(r.project(r.union(r.compilePattern(r.arrayToSet(['A
     dump(r.matcherEquals(R1a, A) === true);
     dump(r.matcherEquals(R1b, B) === true);
 })();
+
+(function () {
+    console.log("Embedding matchers in patterns");
+    var M1a =
+	r.compilePattern(r.arrayToSet(['A']),
+			 [1, r.embeddedMatcher(r.compilePattern(r.arrayToSet(['B']), [2, 3])), 4]);
+    var M1b =
+	r.compilePattern(r.arrayToSet(['A']), [1, [2, 3], 4]);
+    var M2a =
+	r.compilePattern(r.arrayToSet(['A']),
+			 [r.embeddedMatcher(r.compilePattern(r.arrayToSet(['B']), [1, 2])),
+			  r.embeddedMatcher(r.compilePattern(r.arrayToSet(['C']), [3, 4]))]);
+    var M2b =
+	r.compilePattern(r.arrayToSet(['A']), [[1, 2], [3, 4]]);
+    dumpM(M1a);
+    dumpM(M2a);
+    dump(r.matcherEquals(M1a, M1b) === true);
+    dump(r.matcherEquals(M2a, M2b) === true);
+})();

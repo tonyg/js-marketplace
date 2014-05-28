@@ -11,6 +11,14 @@ function Routing(exports) {
 	throw new Error(message);
     }
 
+    function $Embedded(matcher) {
+	this.matcher = matcher;
+    }
+
+    function embeddedMatcher(matcher) {
+	return new $Embedded(matcher);
+    }
+
     // The pattern argument defaults to wildcard, __.
     function $Capture(pattern) {
 	this.pattern = (typeof pattern === 'undefined' ? __ : pattern);
@@ -130,7 +138,11 @@ function Routing(exports) {
 		return rseq(SOA, acc);
 	    }
 
-	    return rseq(JSON.stringify(p), acc);
+	    if (p instanceof $Embedded) {
+		return appendMatcher(p.matcher, function (v) { return acc; });
+	    } else {
+		return rseq(JSON.stringify(p), acc);
+	    }
 	}
     }
 
@@ -712,6 +724,27 @@ function Routing(exports) {
 	}
     }
 
+    function appendMatcher(m, mTailFn) {
+	return walk(m);
+
+	function walk(m) {
+	    if (is_emptyMatcher(m)) return emptyMatcher;
+	    if (m instanceof $WildcardSequence) return rwildseq(walk(m.matcher));
+	    if (m instanceof $Success) die("Ill-formed matcher");
+
+	    var target = new $Dict();
+	    for (var key in m.entries) {
+		var k = m.get(key);
+		if (is_keyClose(key) && (k instanceof $Success)) {
+		    target = union(target, mTailFn(k.value));
+		} else {
+		    rupdateInplace(target, key, walk(k));
+		}
+	    }
+	    return target.emptyGuard();
+	}
+    }
+
     function relabel(m, f) {
 	return walk(m);
 
@@ -751,10 +784,14 @@ function Routing(exports) {
 		return;
 	    }
 
-	    if (p === __) {
-		acc.push(p);
+	    if (p instanceof $Embedded) {
+		die("Cannot embed matcher in projection");
 	    } else {
-		acc.push(JSON.stringify(p));
+		if (p === __) {
+		    acc.push(p);
+		} else {
+		    acc.push(JSON.stringify(p));
+		}
 	    }
 	}
     }
@@ -773,7 +810,11 @@ function Routing(exports) {
 		return result;
 	    }
 
-	    return p;
+	    if (p instanceof $Embedded) {
+		return p.matcher;
+	    } else {
+		return p;
+	    }
 	}
     }
 
@@ -1446,12 +1487,14 @@ function Routing(exports) {
     exports._$ = _$;
     exports.is_emptyMatcher = is_emptyMatcher;
     exports.emptyMatcher = emptyMatcher;
+    exports.embeddedMatcher = embeddedMatcher;
     exports.compilePattern = compilePattern;
     exports.union = unionN;
     exports.intersect = intersect;
     exports.erasePath = erasePath;
     exports.matchValue = matchValue;
     exports.matchMatcher = matchMatcher;
+    exports.appendMatcher = appendMatcher;
     exports.relabel = relabel;
     exports.compileProjection = compileProjection;
     exports.projectionToPattern = projectionToPattern;
