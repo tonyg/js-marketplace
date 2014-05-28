@@ -150,19 +150,6 @@ function Routing(exports) {
 	return s.slice();
     }
 
-    function rupdate(r, key, k) {
-	if (is_emptyMatcher(k)) {
-	    if (is_emptyMatcher(r)) return r;
-	    r = r.copy();
-	    r.clear(key);
-	    return r.emptyGuard();
-	} else {
-	    r = (is_emptyMatcher(r) ? new $Dict() : r.copy());
-	    r.set(key, k);
-	    return r;
-	}
-    }
-
     function rupdateInplace(r, key, k) {
 	if (is_emptyMatcher(k)) {
 	    r.clear(key);
