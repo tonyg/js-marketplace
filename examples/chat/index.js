@@ -15,13 +15,12 @@ function outputItem(item) {
     return item;
 }
 
-function updateNymList(rs) {
+function updateNymList(g) {
     var statuses = {};
-    for (var i = 0; i < rs.length; i++) {
-	var p = rs[i].pattern;
-	if (p[0] === "broker" && p[1] === 0 && p[2][0] === "chatEvent") {
-	    statuses[chatEventNym(p[2])] = chatEventStatus(p[2]);
-	}
+    var nymProj = ["broker", 0, ["chatEvent", _$, _$, __, __]];
+    var matchedNyms = route.matcherKeys(g.project(route.compileProjection(nymProj), true, 0, 0));
+    for (var i = 0; i < matchedNyms.length; i++) {
+	statuses[matchedNyms[i][0]] = matchedNyms[i][1];
     }
     var nyms = [];
     for (var nym in statuses) { nyms.push(nym); }
@@ -74,7 +73,10 @@ $(document).ready(function () {
 	    },
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
-		    var newState = (e.routes.length > 0) ? e.routes[0].pattern[1] : "crashed";
+		    var states =
+			route.matcherKeys(e.gestalt.project(route.compileProjection([__, _$]),
+							    true, 0, 0));
+		    var newState = states.length > 0 ? states[0][0] : "crashed";
 		    if (this.state != newState) {
 			outputState(newState);
 			this.state = newState;
@@ -84,8 +86,6 @@ $(document).ready(function () {
 	});
 	World.spawn({
 	    // Actual chat functionality
-	    peers: new PresenceDetector(),
-	    peerMap: {},
 	    boot: function () {
 		World.updateRoutes(this.subscriptions());
 	    },
@@ -104,7 +104,7 @@ $(document).ready(function () {
 		var self = this;
 		switch (e.type) {
 		case "routes":
-		    updateNymList(e.routes);
+		    updateNymList(e.gestalt);
 		    break;
 		case "message":
 		    if (e.message === "wake") {

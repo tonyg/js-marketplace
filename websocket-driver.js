@@ -11,8 +11,8 @@ function WebSocketConnection(label, wsurl, shouldReconnect) {
     this.wsurl = wsurl;
     this.shouldReconnect = shouldReconnect ? true : false;
     this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
-    this.localRoutes = [];
-    this.peerRoutes = [];
+    this.localGestalt = route.emptyGestalt;
+    this.peerGestalt = route.emptyGestalt;
     this.prevPeerRoutesMessage = null;
     this.sock = null;
     this.deduplicator = new Deduplicator();
@@ -43,31 +43,18 @@ WebSocketConnection.prototype.statusRoute = function (status) {
     return pub([this.label + "_state", status]);
 };
 
-WebSocketConnection.prototype.relayRoutes = function () {
-    // fresh copy each time, suitable for in-place extension/mutation
-    return [this.statusRoute(this.isConnected() ? "connected" : "disconnected"),
-	    pub([this.label, __, __], 0, 1000),
-	    sub([this.label, __, __], 0, 1000)];
+WebSocketConnection.prototype.relayGestalt = function () {
+    return this.statusRoute(this.isConnected() ? "connected" : "disconnected")
+	.union(pub([this.label, __, __], 0, 10))
+	.union(sub([this.label, __, __], 0, 10));
+    // TODO: level 10 is ad-hoc; support infinity at some point in future
 };
 
-WebSocketConnection.prototype.aggregateRoutes = function () {
-    var rs = this.relayRoutes();
-    for (var i = 0; i < this.peerRoutes.length; i++) {
-	var r = this.peerRoutes[i];
-	rs.push(new Route(r.isSubscription,
-			  // TODO: This is a horrible syntactic hack
-			  // (in conjunction with the numberness-test
-			  // in handleEvent's routes handler) for
-			  // distinguishing routes published on behalf
-			  // of the remote side from those published
-			  // by the local side. See (**HACK**) mark
-			  // below.
-			  [this.label, __, r.pattern],
-			  r.metaLevel,
-			  r.level));
-    }
-    // console.log("WebSocketConnection.aggregateRoutes", this.label, rs);
-    return rs;
+WebSocketConnection.prototype.aggregateGestalt = function () {
+    var self = this;
+    return this.peerGestalt.transform(function (m) {
+	return route.compilePattern(true, [self.label, __, route.embeddedMatcher(m)]);
+    }).union(this.relayGestalt());
 };
 
 WebSocketConnection.prototype.boot = function () {
@@ -91,32 +78,39 @@ WebSocketConnection.prototype.safeSend = function (m) {
 };
 
 WebSocketConnection.prototype.sendLocalRoutes = function () {
-    this.safeSend(JSON.stringify(encodeEvent(updateRoutes(this.localRoutes))));
+    this.safeSend(JSON.stringify(encodeEvent(updateRoutes([this.localGestalt]))));
+};
+
+WebSocketConnection.prototype.collectMatchers = function (getAdvertisements, level, g) {
+    console.log("collectMatchers; getAdvertisements", getAdvertisements, "level", level);
+    console.log("g", g.pretty());
+    var extractMetaLevels = route.compileProjection([this.label, _$, __]);
+    var mls = route.matcherKeys(g.project(extractMetaLevels, getAdvertisements, 0, level));
+    console.log("got metalevels", JSON.stringify(mls));
+    for (var i = 0; i < mls.length; i++) {
+	var metaLevel = mls[i][0]; // only one capture in the projection
+	var extractMatchers = route.compileProjection([this.label, metaLevel, _$]);
+	var m = g.project(extractMatchers, getAdvertisements, 0, level);
+	console.log("matcher at metalevel", metaLevel, "is", route.prettyMatcher(m));
+	this.localGestalt = this.localGestalt.union(route.simpleGestalt(getAdvertisements,
+									route.embeddedMatcher(m),
+									metaLevel,
+									level));
+    }
 };
 
 WebSocketConnection.prototype.handleEvent = function (e) {
     // console.log("WebSocketConnection.handleEvent", e);
     switch (e.type) {
     case "routes":
-	this.localRoutes = [];
-	for (var i = 0; i < e.routes.length; i++) {
-	    var r = e.routes[i];
-	    if (r.pattern.length && r.pattern.length === 3
-		&& r.pattern[0] === this.label
-		// TODO: This is a horrible syntactic hack (in
-		// conjunction with the use of __ in in
-		// aggregateRoutes) for distinguishing routes
-		// published on behalf of the remote side from those
-		// published by the local side. See (**HACK**) mark
-		// above.
-		&& typeof(r.pattern[1]) === "number")
-	    {
-		this.localRoutes.push(new Route(r.isSubscription,
-						r.pattern[2],
-						r.pattern[1],
-						r.level));
-	    }
+	// TODO: GROSS - erasing by pid!
+	var g = e.gestalt.erasePath(this.aggregateGestalt().label(World.activePid()));
+	this.localGestalt = route.emptyGestalt;
+	for (var level = 0; level < e.gestalt.levelCount(0); level++) {
+	    this.collectMatchers(false, level, g);
+	    this.collectMatchers(true, level, g);
 	}
+
 	this.sendLocalRoutes();
 	break;
     case "message":
@@ -178,8 +172,8 @@ WebSocketConnection.prototype.onmessage = function (wse) {
     case "routes":
 	if (this.prevPeerRoutesMessage !== wse.data) {
 	    this.prevPeerRoutesMessage = wse.data;
-	    this.peerRoutes = e.routes;
-	    World.updateRoutes(this.aggregateRoutes());
+	    this.peerGestalt = e.gestalt;
+	    World.updateRoutes([this.aggregateGestalt()]);
 	}
 	break;
     case "message":
@@ -195,7 +189,7 @@ WebSocketConnection.prototype.onclose = function (e) {
     console.log("onclose", e);
 
     // Update routes to give clients some indication of the discontinuity
-    World.updateRoutes(this.aggregateRoutes());
+    World.updateRoutes([this.aggregateGestalt()]);
 
     if (this.shouldReconnect) {
 	console.log("reconnecting to " + this.wsurl + " in " + this.reconnectDelay + "ms");
@@ -214,11 +208,7 @@ WebSocketConnection.prototype.onclose = function (e) {
 function encodeEvent(e) {
     switch (e.type) {
     case "routes":
-	var rs = [];
-	for (var i = 0; i < e.routes.length; i++) {
-	    rs.push(e.routes[i].toJSON());
-	}
-	return ["routes", rs];
+	return ["routes", e.gestalt.serialize(function (v) { return true; })];
     case "message":
 	return ["message", e.message, e.metaLevel, e.isFeedback];
     }
@@ -227,11 +217,7 @@ function encodeEvent(e) {
 function decodeAction(j) {
     switch (j[0]) {
     case "routes":
-	var rs = [];
-	for (var i = 0; i < j[1].length; i++) {
-	    rs.push(Route.fromJSON(j[1][i]));
-	}
-	return updateRoutes(rs);
+	return updateRoutes([route.deserializeGestalt(j[1], function (v) { return true; })]);
     case "message":
 	return sendMessage(j[1], j[2], j[3]);
     default:
