@@ -1452,8 +1452,10 @@ function Routing(exports) {
 	return acc.join('');
     };
 
-    Gestalt.prototype.serialize = function () {
-	function serializeSuccess(v) { return v === true ? true : setToArray(v); }
+    Gestalt.prototype.serialize = function (serializeSuccess) {
+	if (typeof serializeSuccess === 'undefined') {
+	    serializeSuccess = function (v) { return v === true ? true : setToArray(v); };
+	}
 	return ["gestalt", mapLevels(this.metaLevels, function (p) {
 	    return [serializeMatcher(p.subscriptions, serializeSuccess),
 		    serializeMatcher(p.advertisements, serializeSuccess)];
@@ -1462,9 +1464,11 @@ function Routing(exports) {
 	}, emptyLevel, [[],[]])];
     };
 
-    function deserializeGestalt(r) {
+    function deserializeGestalt(r, deserializeSuccess) {
+	if (typeof deserializeSuccess === 'undefined') {
+	    deserializeSuccess = function (v) { return v === true ? true : arrayToSet(v); };
+	}
 	if (r[0] !== "gestalt") die("Invalid gestalt serialization: " + r);
-	function deserializeSuccess(v) { return v === true ? true : arrayToSet(v); }
 	return new Gestalt(mapLevels(r[1], function (pr) {
 	    return new GestaltLevel(deserializeMatcher(pr[0], deserializeSuccess),
 				    deserializeMatcher(pr[1], deserializeSuccess));
