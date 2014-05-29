@@ -1,5 +1,6 @@
 APP_NAME=MarketplaceChat.app
 LIB_SOURCES=\
+	route.js \
 	marketplace.js \
 	spy.js \
 	dom-driver.js \
