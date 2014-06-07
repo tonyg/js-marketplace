@@ -22,7 +22,6 @@
   (define server-id (websocket-local-server port ssl-options))
   (spawn-demand-matcher (websocket-message (?! (websocket-remote-client ?)) server-id ?)
 			#:meta-level 1
-			#:demand-is-subscription? #f
 			(lambda (c) (spawn-connection-handler c server-id))))
 
 (spawn-world

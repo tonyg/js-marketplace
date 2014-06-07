@@ -2,7 +2,7 @@
 
 function spawnJQueryDriver(baseSelector, metaLevel) {
     metaLevel = metaLevel || 0;
-    var d = new DemandMatcher(["jQuery", _$, _$, __], metaLevel);
+    var d = new DemandMatcher(["jQuery", _$, _$, __], metaLevel, {demandSideIsSubscription: true});
     d.onDemandIncrease = function (captures) {
 	var selector = captures[0];
 	var eventName = captures[1];

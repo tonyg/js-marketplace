@@ -330,11 +330,11 @@ function DemandMatcher(projection, metaLevel, options) {
     options = $.extend({
 	demandLevel: 0,
 	supplyLevel: 0,
-	demandSideIsSubscription: true
+	demandSideIsSubscription: false
     }, options);
     this.pattern = route.projectionToPattern(projection);
     this.projectionSpec = route.compileProjection(projection);
-    this.metaLevel = metaLevel;
+    this.metaLevel = metaLevel | 0;
     this.demandLevel = options.demandLevel;
     this.supplyLevel = options.supplyLevel;
     this.demandSideIsSubscription = options.demandSideIsSubscription;

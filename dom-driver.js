@@ -1,7 +1,7 @@
 // DOM fragment display driver
 
 function spawnDOMDriver() {
-    var d = new DemandMatcher(["DOM", _$, _$, _$], 0, {demandSideIsSubscription: false});
+    var d = new DemandMatcher(["DOM", _$, _$, _$]);
     d.onDemandIncrease = function (captures) {
 	var selector = captures[0];
 	var fragmentClass = captures[1];
