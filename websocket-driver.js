@@ -82,16 +82,14 @@ WebSocketConnection.prototype.sendLocalRoutes = function () {
 };
 
 WebSocketConnection.prototype.collectMatchers = function (getAdvertisements, level, g) {
-    console.log("collectMatchers; getAdvertisements", getAdvertisements, "level", level);
-    console.log("g", g.pretty());
     var extractMetaLevels = route.compileProjection([this.label, _$, __]);
     var mls = route.matcherKeys(g.project(extractMetaLevels, getAdvertisements, 0, level));
-    console.log("got metalevels", JSON.stringify(mls));
+    if (mls === null) return;
+    // ^ TODO: fix this cheap and nasty hack. Better protocol for gestalt use, perhaps.
     for (var i = 0; i < mls.length; i++) {
 	var metaLevel = mls[i][0]; // only one capture in the projection
 	var extractMatchers = route.compileProjection([this.label, metaLevel, _$]);
 	var m = g.project(extractMatchers, getAdvertisements, 0, level);
-	console.log("matcher at metalevel", metaLevel, "is", route.prettyMatcher(m));
 	this.localGestalt = this.localGestalt.union(route.simpleGestalt(getAdvertisements,
 									route.embeddedMatcher(m),
 									metaLevel,
