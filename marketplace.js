@@ -323,6 +323,42 @@ World.prototype.handleEvent = function (e) {
     }
 };
 
+World.prototype.processTree = function () {
+    var kids = [];
+    for (var pid in this.processTable) {
+	var p = this.processTable[pid];
+	if (p.behavior instanceof World) {
+	    kids.push([pid, p.behavior.processTree()]);
+	} else {
+	    kids.push([pid, p]);
+	}
+    }
+    return kids;
+};
+
+World.prototype.textProcessTree = function (ownPid) {
+    var lines = [];
+
+    function dumpProcess(prefix, pid, p) {
+	if (p instanceof Array) {
+	    lines.push(prefix + '--+ ' + pid);
+	    for (var i = 0; i < p.length; i++) {
+		dumpProcess(prefix + '  |', p[i][0], p[i][1]);
+	    }
+	    lines.push(prefix);
+	} else {
+	    var label = p.behavior.name || p.behavior.constructor.name || '';
+	    lines.push(prefix + '-- ' + pid + ': ' + label +
+		       JSON.stringify(p.behavior, function (k, v) {
+			   return k === 'name' ? undefined : v;
+		       }));
+	}
+    }
+
+    dumpProcess('', ownPid || '', this.processTree());
+    return lines.join('\n');
+};
+
 /*---------------------------------------------------------------------------*/
 /* Utilities: matching demand for some service */
 
