@@ -52,6 +52,7 @@ function World(bootFn) {
     this.partialGestalt = route.emptyGestalt; // Only gestalt from local processes
     this.fullGestalt = route.emptyGestalt ;; // partialGestalt unioned with downwardGestalt
     this.processTable = {};
+    this.tombstones = {};
     this.downwardGestalt = route.emptyGestalt;
     this.processActions = [];
     this.asChild(-1, bootFn, true);
@@ -178,6 +179,8 @@ World.prototype.kill = function (pid, exn) {
     }
     delete this.processTable[pid];
     if (p) {
+	p.exitReason = exn;
+	this.tombstones[pid] = p;
 	this.applyAndIssueRoutingUpdate(p.gestalt, route.emptyGestalt);
     }
 };
@@ -323,6 +326,8 @@ World.prototype.handleEvent = function (e) {
     }
 };
 
+/* Debugging, management, and monitoring */
+
 World.prototype.processTree = function () {
     var kids = [];
     for (var pid in this.processTable) {
@@ -333,6 +338,10 @@ World.prototype.processTree = function () {
 	    kids.push([pid, p]);
 	}
     }
+    for (var pid in this.tombstones) {
+	kids.push([pid, this.tombstones[pid]]);
+    }
+    kids.sort();
     return kids;
 };
 
@@ -348,7 +357,9 @@ World.prototype.textProcessTree = function (ownPid) {
 	    lines.push(prefix);
 	} else {
 	    var label = p.behavior.name || p.behavior.constructor.name || '';
+	    var tombstoneString = p.exitReason ? ' (EXITED: ' + p.exitReason + ') ' : '';
 	    lines.push(prefix + '-- ' + pid + ': ' + label +
+		       tombstoneString +
 		       JSON.stringify(p.behavior, function (k, v) {
 			   return k === 'name' ? undefined : v;
 		       }));
@@ -357,6 +368,16 @@ World.prototype.textProcessTree = function (ownPid) {
 
     dumpProcess('', ownPid || '', this.processTree());
     return lines.join('\n');
+};
+
+World.prototype.clearTombstones = function () {
+    this.tombstones = {};
+    for (var pid in this.processTable) {
+	var p = this.processTable[pid];
+	if (p.behavior instanceof World) {
+	    p.behavior.clearTombstones();
+	}
+    }
 };
 
 /*---------------------------------------------------------------------------*/
