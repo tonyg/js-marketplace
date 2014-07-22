@@ -8,14 +8,19 @@ var DEFAULT_PING_INTERVAL = DEFAULT_IDLE_TIMEOUT - 10000;
 
 function WebSocketConnection(label, wsurl, shouldReconnect) {
     this.label = label;
+    this.sendsAttempted = 0;
+    this.sendsTransmitted = 0;
+    this.receiveCount = 0;
+    this.sock = null;
     this.wsurl = wsurl;
     this.shouldReconnect = shouldReconnect ? true : false;
     this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
     this.localGestalt = route.emptyGestalt;
     this.peerGestalt = route.emptyGestalt;
+    this.prevLocalRoutesMessage = null;
     this.prevPeerRoutesMessage = null;
-    this.sock = null;
     this.deduplicator = new Deduplicator();
+    this.connectionCount = 0;
 
     this.activityTimestamp = 0;
     this.idleTimeout = DEFAULT_IDLE_TIMEOUT;
@@ -72,14 +77,22 @@ WebSocketConnection.prototype.isConnected = function () {
 
 WebSocketConnection.prototype.safeSend = function (m) {
     try {
-	if (this.isConnected()) { this.sock.send(m); }
+	this.sendsAttempted++;
+	if (this.isConnected()) {
+	    this.sock.send(m);
+	    this.sendsTransmitted++;
+	}
     } catch (e) {
 	console.warn("Trapped exn while sending", e);
     }
 };
 
 WebSocketConnection.prototype.sendLocalRoutes = function () {
-    this.safeSend(JSON.stringify(encodeEvent(updateRoutes([this.localGestalt]))));
+    var newLocalRoutesMessage = JSON.stringify(encodeEvent(updateRoutes([this.localGestalt])));
+    if (this.prevLocalRoutesMessage !== newLocalRoutesMessage) {
+	this.prevLocalRoutesMessage = newLocalRoutesMessage;
+	this.safeSend(newLocalRoutesMessage);
+    }
 };
 
 WebSocketConnection.prototype.collectMatchers = function (getAdvertisements, level, g) {
@@ -138,15 +151,20 @@ WebSocketConnection.prototype.forceclose = function (keepReconnectDelay) {
 WebSocketConnection.prototype.reconnect = function () {
     var self = this;
     this.forceclose(true);
+    this.connectionCount++;
     this.sock = new WebSocket(this.wsurl);
     this.sock.onopen = World.wrap(function (e) { return self.onopen(e); });
-    this.sock.onmessage = World.wrap(function (e) { return self.onmessage(e); });
+    this.sock.onmessage = World.wrap(function (e) {
+	self.receiveCount++;
+	return self.onmessage(e);
+    });
     this.sock.onclose = World.wrap(function (e) { return self.onclose(e); });
 };
 
 WebSocketConnection.prototype.onopen = function (e) {
     console.log("connected to " + this.sock.url);
     this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
+    this.prevLocalRoutesMessage = null;
     this.sendLocalRoutes();
 };
 
