@@ -179,8 +179,10 @@ World.prototype.kill = function (pid, exn) {
     }
     delete this.processTable[pid];
     if (p) {
-	p.exitReason = exn;
-	this.tombstones[pid] = p;
+	if (exn) {
+	    p.exitReason = exn;
+	    this.tombstones[pid] = p;
+	}
 	this.applyAndIssueRoutingUpdate(p.gestalt, route.emptyGestalt);
     }
 };
