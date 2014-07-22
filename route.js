@@ -1254,6 +1254,21 @@ function Routing(exports) {
 
     var emptyGestalt = new Gestalt([]);
 
+    // Not quite what it says on the tin - the true fullGestalt
+    // wouldn't be parameterized on the number of levels and
+    // metalevels, but instead would be full at *all* levels and
+    // metalevels. Our representation leaks through into the interface
+    // here :-/
+    function fullGestalt(nMetalevels, nLevels) {
+	var matcher = compilePattern(true, __);
+	var l = new GestaltLevel(matcher, matcher);
+	var levels = [];
+	while (nLevels--) { levels.push(l); }
+	var metaLevels = [];
+	while (nMetalevels--) { metaLevels.push(levels); }
+	return new Gestalt(metaLevels);
+    }
+
     Gestalt.prototype.isEmpty = function () {
 	for (var i = 0; i < this.metaLevels.length; i++) {
 	    var levels = this.metaLevels[i];
@@ -1503,6 +1518,7 @@ function Routing(exports) {
     exports.Gestalt = Gestalt;
     exports.simpleGestalt = simpleGestalt;
     exports.emptyGestalt = emptyGestalt;
+    exports.fullGestalt = fullGestalt;
     exports.gestaltUnion = gestaltUnion;
     exports.deserializeGestalt = deserializeGestalt;
 }
