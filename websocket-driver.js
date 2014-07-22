@@ -114,9 +114,11 @@ WebSocketConnection.prototype.handleEvent = function (e) {
     switch (e.type) {
     case "routes":
 	// TODO: GROSS - erasing by pid!
-	var g = e.gestalt.erasePath(this.aggregateGestalt().label(World.activePid()));
+	var nLevels = e.gestalt.levelCount(0);
+	var relayGestalt = route.fullGestalt(1, nLevels).label(World.activePid());
+	var g = e.gestalt.erasePath(relayGestalt);
 	this.localGestalt = route.emptyGestalt;
-	for (var level = 0; level < e.gestalt.levelCount(0); level++) {
+	for (var level = 0; level < nLevels; level++) {
 	    this.collectMatchers(false, level, g);
 	    this.collectMatchers(true, level, g);
 	}
