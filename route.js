@@ -1391,8 +1391,8 @@ function Routing(exports) {
 	    var ls = inputMetaLevels[i];
 	    var levels = [];
 	    for (var j = 0; j < ls.length; j++) {
-		var p = f(ls[j] || inputEmptyLevel);
-		if (!emptyCheck(p)) {
+		var p = f(ls[j] || inputEmptyLevel, i, j);
+		if (!emptyCheck(p, i, j)) {
 		    while (levels.length < j) levels.push(outputEmptyLevel);
 		    levels.push(p);
 		}
@@ -1406,8 +1406,9 @@ function Routing(exports) {
     };
 
     Gestalt.prototype.transform = function (f) {
-	return new Gestalt(mapLevels(this.metaLevels, function (p) {
-	    return new GestaltLevel(f(p.subscriptions), f(p.advertisements));
+	return new Gestalt(mapLevels(this.metaLevels, function (p, ml, l) {
+	    return new GestaltLevel(f(p.subscriptions, ml, l, false),
+				    f(p.advertisements, ml, l, true));
 	}, function (p) {
 	    return p.isEmpty();
 	}, emptyLevel, emptyLevel));

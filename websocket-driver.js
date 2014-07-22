@@ -52,8 +52,9 @@ WebSocketConnection.prototype.relayGestalt = function () {
 
 WebSocketConnection.prototype.aggregateGestalt = function () {
     var self = this;
-    return this.peerGestalt.transform(function (m) {
-	return route.compilePattern(true, [self.label, __, route.embeddedMatcher(m)]);
+    return this.peerGestalt.transform(function (m, metaLevel) {
+	return route.compilePattern(true,
+				    [self.label, metaLevel, route.embeddedMatcher(m)]);
     }).union(this.relayGestalt());
 };
 
@@ -84,8 +85,6 @@ WebSocketConnection.prototype.sendLocalRoutes = function () {
 WebSocketConnection.prototype.collectMatchers = function (getAdvertisements, level, g) {
     var extractMetaLevels = route.compileProjection([this.label, _$, __]);
     var mls = route.matcherKeys(g.project(extractMetaLevels, getAdvertisements, 0, level));
-    if (mls === null) return;
-    // ^ TODO: fix this cheap and nasty hack. Better protocol for gestalt use, perhaps.
     for (var i = 0; i < mls.length; i++) {
 	var metaLevel = mls[i][0]; // only one capture in the projection
 	var extractMatchers = route.compileProjection([this.label, metaLevel, _$]);
@@ -113,9 +112,7 @@ WebSocketConnection.prototype.handleEvent = function (e) {
 	break;
     case "message":
 	var m = e.message;
-	if (m.length && m.length === 3
-	    && m[0] === this.label
-	    && typeof(m[1]) === "number")
+	if (m.length && m.length === 3 && m[0] === this.label)
 	{
 	    var encoded = JSON.stringify(encodeEvent(sendMessage(m[2], m[1], e.isFeedback)));
 	    if (this.deduplicator.accept(encoded)) {
