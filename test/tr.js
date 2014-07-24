@@ -1,5 +1,5 @@
 var util = require('util');
-var r = require("./route.js");
+var r = require("../src/route.js");
 
 function dump(x) {
     console.log(util.inspect(x, { depth: null }));
