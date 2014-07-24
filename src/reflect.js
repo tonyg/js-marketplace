@@ -16,7 +16,8 @@ function formalParameters(fn) {
     var argDecl = fnText.match(FN_ARGS);
     var args = argDecl[1].split(FN_ARG_SPLIT);
     for (var i = 0; i < args.length; i++) {
-	result.push(args[i].trim());
+	var trimmed = args[i].trim();
+	if (trimmed) { result.push(trimmed); }
     }
 
     return result;
