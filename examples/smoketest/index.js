@@ -1,8 +1,14 @@
 var G;
 $(document).ready(function () {
-    G = new Ground(function () {
+    var World = Minimart.World;
+    var sub = Minimart.sub;
+    var pub = Minimart.pub;
+    var __ = Minimart.__;
+    var _$ = Minimart._$;
+
+    G = new Minimart.Ground(function () {
 	console.log('starting ground boot');
-	World.spawn(new Spy("GROUND", true));
+	World.spawn(new Minimart.Spy("GROUND", true));
 	World.spawn({
 	    counter: 0,
 	    handleEvent: function (e) {},

@@ -1,6 +1,5 @@
 private-key.pem
 server-cert.pem
-MarketplaceChat.app.zip
-MarketplaceChat.app/
 scratch/
 _site/
+node_modules/

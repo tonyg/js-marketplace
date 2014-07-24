@@ -1,8 +1,15 @@
 // JQuery event driver
+var Minimart = require("./minimart.js");
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
 
 function spawnJQueryDriver(baseSelector, metaLevel) {
     metaLevel = metaLevel || 0;
-    var d = new DemandMatcher(["jQuery", _$, _$, __], metaLevel, {demandSideIsSubscription: true});
+    var d = new Minimart.DemandMatcher(["jQuery", _$, _$, __], metaLevel,
+				       {demandSideIsSubscription: true});
     d.onDemandIncrease = function (captures) {
 	var selector = captures[0];
 	var eventName = captures[1];
@@ -44,3 +51,7 @@ JQueryEventRouter.prototype.computeNodes = function () {
 	return $(this.selector);
     }
 };
+
+///////////////////////////////////////////////////////////////////////////
+
+module.exports.spawnJQueryDriver = spawnJQueryDriver;

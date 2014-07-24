@@ -1,3 +1,11 @@
+var Minimart = require("./minimart.js");
+var Route = Minimart.Route;
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
+
 function spawnRoutingTableWidget(selector, fragmentClass, observationLevel) {
     observationLevel = observationLevel || 10;
     // ^ arbitrary: should be Infinity, when route.js supports it. TODO
@@ -5,8 +13,8 @@ function spawnRoutingTableWidget(selector, fragmentClass, observationLevel) {
     World.spawn({
 	boot: function () { this.updateState(); },
 
-	state: route.emptyGestalt.serialize(),
-	nextState: route.emptyGestalt.serialize(),
+	state: Route.emptyGestalt.serialize(),
+	nextState: Route.emptyGestalt.serialize(),
 	timer: false,
 
 	localGestalt: (sub(       ["DOM", selector, fragmentClass, __], 0, 2)
@@ -18,8 +26,7 @@ function spawnRoutingTableWidget(selector, fragmentClass, observationLevel) {
 	},
 
 	updateState: function () {
-	    var elts = ["ul", {"class": "routing-table"},
-			["li", ["pre", route.deserializeGestalt(this.state).pretty()]]];
+	    var elts = ["pre", Route.deserializeGestalt(this.state).pretty()];
 	    World.updateRoutes([sub(__, 0, observationLevel),
 				pub(__, 0, observationLevel),
 				pub(["DOM", selector, fragmentClass, elts])]);
@@ -45,3 +52,5 @@ function spawnRoutingTableWidget(selector, fragmentClass, observationLevel) {
     });
 
 }
+
+module.exports.spawnRoutingTableWidget = spawnRoutingTableWidget;

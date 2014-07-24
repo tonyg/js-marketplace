@@ -1,27 +1,31 @@
+var Route = require("./route.js");
+
+///////////////////////////////////////////////////////////////////////////
+
 // TODO: trigger-guards as per minimart
 
 /*---------------------------------------------------------------------------*/
 /* Events and Actions */
 
-var __ = route.__;
-var _$ = route._$;
+var __ = Route.__;
+var _$ = Route._$;
 
 function sub(pattern, metaLevel, level) {
-    return route.simpleGestalt(false, pattern, metaLevel, level);
+    return Route.simpleGestalt(false, pattern, metaLevel, level);
 }
 
 function pub(pattern, metaLevel, level) {
-    return route.simpleGestalt(true, pattern, metaLevel, level);
+    return Route.simpleGestalt(true, pattern, metaLevel, level);
 }
 
 function spawn(behavior, initialGestalts) {
     return { type: "spawn",
 	     behavior: behavior,
-	     initialGestalt: route.gestaltUnion(initialGestalts || []) };
+	     initialGestalt: Route.gestaltUnion(initialGestalts || []) };
 }
 
 function updateRoutes(gestalts) {
-    return { type: "routes", gestalt: route.gestaltUnion(gestalts) };
+    return { type: "routes", gestalt: Route.gestaltUnion(gestalts) };
 }
 
 function pendingRoutingUpdate(aggregate, affectedSubgestalt, knownTarget) {
@@ -49,11 +53,11 @@ function World(bootFn) {
     this.alive = true;
     this.eventQueue = [];
     this.runnablePids = {};
-    this.partialGestalt = route.emptyGestalt; // Only gestalt from local processes
-    this.fullGestalt = route.emptyGestalt ;; // partialGestalt unioned with downwardGestalt
+    this.partialGestalt = Route.emptyGestalt; // Only gestalt from local processes
+    this.fullGestalt = Route.emptyGestalt ;; // partialGestalt unioned with downwardGestalt
     this.processTable = {};
     this.tombstones = {};
-    this.downwardGestalt = route.emptyGestalt;
+    this.downwardGestalt = Route.emptyGestalt;
     this.processActions = [];
     this.asChild(-1, bootFn, true);
 }
@@ -134,7 +138,7 @@ World.prototype.enqueueAction = function (pid, action) {
 World.prototype.isInert = function () {
     return this.eventQueue.length === 0
 	&& this.processActions.length === 0
-	&& route.is_emptySet(this.runnablePids);
+	&& Route.is_emptySet(this.runnablePids);
 };
 
 World.prototype.markPidRunnable = function (pid) {
@@ -183,7 +187,7 @@ World.prototype.kill = function (pid, exn) {
 	    p.exitReason = exn;
 	    this.tombstones[pid] = p;
 	}
-	this.applyAndIssueRoutingUpdate(p.gestalt, route.emptyGestalt);
+	this.applyAndIssueRoutingUpdate(p.gestalt, Route.emptyGestalt);
     }
 };
 
@@ -227,7 +231,7 @@ World.prototype.performAction = function (pid, action) {
 	    this.asChild(pid, function () { action.behavior.boot() });
 	    this.markPidRunnable(pid);
 	}
-	this.applyAndIssueRoutingUpdate(route.emptyGestalt, newGestalt, pid);
+	this.applyAndIssueRoutingUpdate(Route.emptyGestalt, newGestalt, pid);
 	break;
     case "routes":
 	if (pid in this.processTable) {
@@ -391,8 +395,8 @@ function DemandMatcher(projection, metaLevel, options) {
 	supplyLevel: 0,
 	demandSideIsSubscription: false
     }, options);
-    this.pattern = route.projectionToPattern(projection);
-    this.projectionSpec = route.compileProjection(projection);
+    this.pattern = Route.projectionToPattern(projection);
+    this.projectionSpec = Route.compileProjection(projection);
     this.metaLevel = metaLevel | 0;
     this.demandLevel = options.demandLevel;
     this.supplyLevel = options.supplyLevel;
@@ -428,12 +432,12 @@ DemandMatcher.prototype.handleGestalt = function (gestalt) {
 					   this.demandSideIsSubscription,
 					   this.metaLevel,
 					   this.supplyLevel);
-    var newDemand = route.arrayToSet(route.matcherKeys(newDemandMatcher));
-    var newSupply = route.arrayToSet(route.matcherKeys(newSupplyMatcher));
-    var demandDelta = route.setSubtract(newDemand, this.currentDemand);
-    var supplyDelta = route.setSubtract(this.currentSupply, newSupply);
-    var demandIncr = route.setSubtract(demandDelta, newSupply);
-    var supplyDecr = route.setIntersect(supplyDelta, newDemand);
+    var newDemand = Route.arrayToSet(Route.matcherKeys(newDemandMatcher));
+    var newSupply = Route.arrayToSet(Route.matcherKeys(newSupplyMatcher));
+    var demandDelta = Route.setSubtract(newDemand, this.currentDemand);
+    var supplyDelta = Route.setSubtract(this.currentSupply, newSupply);
+    var demandIncr = Route.setSubtract(demandDelta, newSupply);
+    var supplyDecr = Route.setIntersect(supplyDelta, newDemand);
     this.currentDemand = newDemand;
     this.currentSupply = newSupply;
     for (var k in demandIncr) this.onDemandIncrease(demandIncr[k]);
@@ -533,3 +537,21 @@ Ground.prototype.enqueueAction = function (pid, action) {
 	console.error("You have sent a message into the outer void.", action);
     }
 };
+
+///////////////////////////////////////////////////////////////////////////
+
+module.exports.__ = __;
+module.exports._$ = _$;
+
+module.exports.sub = sub;
+module.exports.pub = pub;
+module.exports.spawn = spawn;
+module.exports.updateRoutes = updateRoutes;
+module.exports.sendMessage = sendMessage;
+module.exports.shutdownWorld = shutdownWorld;
+
+module.exports.World = World;
+module.exports.DemandMatcher = DemandMatcher;
+module.exports.Deduplicator = Deduplicator;
+module.exports.Ground = Ground;
+module.exports.Route = Route;

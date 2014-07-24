@@ -1,4 +1,10 @@
 // Generic Spy
+var Minimart = require("./minimart.js");
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
 
 function Spy(label, useJson, observationLevel) {
     this.label = label || "SPY";
@@ -29,3 +35,5 @@ Spy.prototype.handleEvent = function (e) {
 	break;
     }
 };
+
+module.exports.Spy = Spy;

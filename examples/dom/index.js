@@ -1,10 +1,16 @@
 var G;
 $(document).ready(function () {
-    G = new Ground(function () {
+    var World = Minimart.World;
+    var sub = Minimart.sub;
+    var pub = Minimart.pub;
+    var __ = Minimart.__;
+    var _$ = Minimart._$;
+
+    G = new Minimart.Ground(function () {
 	console.log('starting ground boot');
 	// World.spawn(new Spy("GROUND", true));
-	spawnDOMDriver();
-	spawnRoutingTableWidget("#spy-holder", "spy");
+	Minimart.DOM.spawnDOMDriver();
+	Minimart.RoutingTableWidget.spawnRoutingTableWidget("#spy-holder", "spy");
 
 	World.spawn({
 	    handleEvent: function (e) {

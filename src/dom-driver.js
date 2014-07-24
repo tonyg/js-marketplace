@@ -1,7 +1,13 @@
 // DOM fragment display driver
+var Minimart = require("./minimart.js");
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
 
 function spawnDOMDriver() {
-    var d = new DemandMatcher(["DOM", _$, _$, _$]);
+    var d = new Minimart.DemandMatcher(["DOM", _$, _$, _$]);
     d.onDemandIncrease = function (captures) {
 	var selector = captures[0];
 	var fragmentClass = captures[1];
@@ -24,7 +30,7 @@ DOMFragment.prototype.boot = function () {
     var self = this;
     var monitoring = sub(["DOM", self.selector, self.fragmentClass, self.fragmentSpec], 1, 2);
     World.spawn(new World(function () {
-	spawnJQueryDriver(self.selector+" > ."+self.fragmentClass, 1);
+	Minimart.JQuery.spawnJQueryDriver(self.selector+" > ."+self.fragmentClass, 1);
 	World.spawn({
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
@@ -86,3 +92,7 @@ DOMFragment.prototype.buildNodes = function () {
     });
     return nodes;
 };
+
+///////////////////////////////////////////////////////////////////////////
+
+module.exports.spawnDOMDriver = spawnDOMDriver;

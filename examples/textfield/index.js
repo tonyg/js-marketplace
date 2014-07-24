@@ -1,6 +1,13 @@
 ///////////////////////////////////////////////////////////////////////////
 // GUI
 
+var Route = Minimart.Route;
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
+
 function piece(text, pos, lo, hi, cls) {
     return "<span class='"+cls+"'>"+
 	((pos >= lo && pos < hi)
@@ -16,19 +23,19 @@ function spawnGui() {
 				sub(["fieldContents", __, __], 0, 1),
 				sub(["highlight", __], 0, 1)]);
 	},
-	fieldContentsSpec: route.compileProjection(["fieldContents", _$, _$]),
-	highlightSpec: route.compileProjection(["highlight", _$]),
+	fieldContentsSpec: Route.compileProjection(["fieldContents", _$, _$]),
+	highlightSpec: Route.compileProjection(["highlight", _$]),
 	handleEvent: function (e) {
 	    switch (e.type) {
 	    case "routes":
 		var text = "", pos = 0, highlight = false;
 		// BUG: escape text!
-		var fc = route.matcherKeys(e.gestalt.project(this.fieldContentsSpec, true));
+		var fc = Route.matcherKeys(e.gestalt.project(this.fieldContentsSpec, true));
 		if (fc.length > 0) {
 		    text = fc[0][0];
 		    pos = fc[0][1];
 		}
-		var hl = route.matcherKeys(e.gestalt.project(this.highlightSpec, true));
+		var hl = Route.matcherKeys(e.gestalt.project(this.highlightSpec, true));
 		if (hl.length > 0) {
 		    highlight = hl[0][0];
 		}
@@ -112,7 +119,7 @@ function spawnSearch() {
     World.spawn({
 	fieldContents: "",
 	highlight: false,
-	fieldContentsSpec: route.compileProjection(["fieldContents", _$, _$]),
+	fieldContentsSpec: Route.compileProjection(["fieldContents", _$, _$]),
 	boot: function () {
 	    World.updateRoutes(this.subscriptions());
 	},
@@ -137,7 +144,7 @@ function spawnSearch() {
 	handleEvent: function (e) {
 	    switch (e.type) {
 	    case "routes":
-		var fc = route.matcherKeys(e.gestalt.project(this.fieldContentsSpec, true));
+		var fc = Route.matcherKeys(e.gestalt.project(this.fieldContentsSpec, true));
 		if (fc.length > 0) {
 		    this.fieldContents = fc[0][0];
 		}
@@ -157,10 +164,10 @@ function spawnSearch() {
 
 var G;
 $(document).ready(function () {
-    G = new Ground(function () {
-	spawnJQueryDriver();
-	spawnDOMDriver();
-	spawnRoutingTableWidget("#spy-holder", "spy");
+    G = new Minimart.Ground(function () {
+	Minimart.JQuery.spawnJQueryDriver();
+	Minimart.DOM.spawnDOMDriver();
+	Minimart.RoutingTableWidget.spawnRoutingTableWidget("#spy-holder", "spy");
 
 	spawnGui();
 	spawnModel();

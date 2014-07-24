@@ -1,3 +1,11 @@
+var Minimart = require("./minimart.js");
+var Route = Minimart.Route;
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
+
 ///////////////////////////////////////////////////////////////////////////
 // WebSocket client driver
 
@@ -15,11 +23,11 @@ function WebSocketConnection(label, wsurl, shouldReconnect) {
     this.wsurl = wsurl;
     this.shouldReconnect = shouldReconnect ? true : false;
     this.reconnectDelay = DEFAULT_RECONNECT_DELAY;
-    this.localGestalt = route.emptyGestalt;
-    this.peerGestalt = route.emptyGestalt;
+    this.localGestalt = Route.emptyGestalt;
+    this.peerGestalt = Route.emptyGestalt;
     this.prevLocalRoutesMessage = null;
     this.prevPeerRoutesMessage = null;
-    this.deduplicator = new Deduplicator();
+    this.deduplicator = new Minimart.Deduplicator();
     this.connectionCount = 0;
 
     this.activityTimestamp = 0;
@@ -58,8 +66,8 @@ WebSocketConnection.prototype.relayGestalt = function () {
 WebSocketConnection.prototype.aggregateGestalt = function () {
     var self = this;
     return this.peerGestalt.transform(function (m, metaLevel) {
-	return route.compilePattern(true,
-				    [self.label, metaLevel, route.embeddedMatcher(m)]);
+	return Route.compilePattern(true,
+				    [self.label, metaLevel, Route.embeddedMatcher(m)]);
     }).union(this.relayGestalt());
 };
 
@@ -88,7 +96,8 @@ WebSocketConnection.prototype.safeSend = function (m) {
 };
 
 WebSocketConnection.prototype.sendLocalRoutes = function () {
-    var newLocalRoutesMessage = JSON.stringify(encodeEvent(updateRoutes([this.localGestalt])));
+    var newLocalRoutesMessage =
+	JSON.stringify(encodeEvent(Minimart.updateRoutes([this.localGestalt])));
     if (this.prevLocalRoutesMessage !== newLocalRoutesMessage) {
 	this.prevLocalRoutesMessage = newLocalRoutesMessage;
 	this.safeSend(newLocalRoutesMessage);
@@ -96,14 +105,14 @@ WebSocketConnection.prototype.sendLocalRoutes = function () {
 };
 
 WebSocketConnection.prototype.collectMatchers = function (getAdvertisements, level, g) {
-    var extractMetaLevels = route.compileProjection([this.label, _$, __]);
-    var mls = route.matcherKeys(g.project(extractMetaLevels, getAdvertisements, 0, level));
+    var extractMetaLevels = Route.compileProjection([this.label, _$, __]);
+    var mls = Route.matcherKeys(g.project(extractMetaLevels, getAdvertisements, 0, level));
     for (var i = 0; i < mls.length; i++) {
 	var metaLevel = mls[i][0]; // only one capture in the projection
-	var extractMatchers = route.compileProjection([this.label, metaLevel, _$]);
+	var extractMatchers = Route.compileProjection([this.label, metaLevel, _$]);
 	var m = g.project(extractMatchers, getAdvertisements, 0, level);
-	this.localGestalt = this.localGestalt.union(route.simpleGestalt(getAdvertisements,
-									route.embeddedMatcher(m),
+	this.localGestalt = this.localGestalt.union(Route.simpleGestalt(getAdvertisements,
+									Route.embeddedMatcher(m),
 									metaLevel,
 									level));
     }
@@ -115,9 +124,9 @@ WebSocketConnection.prototype.handleEvent = function (e) {
     case "routes":
 	// TODO: GROSS - erasing by pid!
 	var nLevels = e.gestalt.levelCount(0);
-	var relayGestalt = route.fullGestalt(1, nLevels).label(World.activePid());
+	var relayGestalt = Route.fullGestalt(1, nLevels).label(World.activePid());
 	var g = e.gestalt.erasePath(relayGestalt);
-	this.localGestalt = route.emptyGestalt;
+	this.localGestalt = Route.emptyGestalt;
 	for (var level = 0; level < nLevels; level++) {
 	    this.collectMatchers(false, level, g);
 	    this.collectMatchers(true, level, g);
@@ -129,7 +138,8 @@ WebSocketConnection.prototype.handleEvent = function (e) {
 	var m = e.message;
 	if (m.length && m.length === 3 && m[0] === this.label)
 	{
-	    var encoded = JSON.stringify(encodeEvent(sendMessage(m[2], m[1], e.isFeedback)));
+	    var encoded = JSON.stringify(encodeEvent(
+		Minimart.sendMessage(m[2], m[1], e.isFeedback)));
 	    if (this.deduplicator.accept(encoded)) {
 		this.safeSend(encoded);
 	    }
@@ -232,10 +242,17 @@ function encodeEvent(e) {
 function decodeAction(j) {
     switch (j[0]) {
     case "routes":
-	return updateRoutes([route.deserializeGestalt(j[1], function (v) { return true; })]);
+	return Minimart.updateRoutes([
+	    Route.deserializeGestalt(j[1], function (v) { return true; })]);
     case "message":
-	return sendMessage(j[1], j[2], j[3]);
+	return Minimart.sendMessage(j[1], j[2], j[3]);
     default:
 	throw { message: "Invalid JSON-encoded action: " + JSON.stringify(j) };
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+
+module.exports.WebSocketConnection = WebSocketConnection;
+module.exports.encodeEvent = encodeEvent;
+module.exports.decodeAction = decodeAction;

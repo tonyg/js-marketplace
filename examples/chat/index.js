@@ -1,3 +1,10 @@
+var Route = Minimart.Route;
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
+
 function chatEvent(nym, status, utterance, stamp) {
     return ["chatEvent", nym, status, utterance, stamp || +(new Date())];
 }
@@ -18,7 +25,7 @@ function outputItem(item) {
 function updateNymList(g) {
     var statuses = {};
     var nymProj = ["broker", 0, ["chatEvent", _$, _$, __, __]];
-    var matchedNyms = route.matcherKeys(g.project(route.compileProjection(nymProj), true, 0, 0));
+    var matchedNyms = Route.matcherKeys(g.project(Route.compileProjection(nymProj), true, 0, 0));
     for (var i = 0; i < matchedNyms.length; i++) {
 	statuses[matchedNyms[i][0]] = matchedNyms[i][1];
     }
@@ -55,15 +62,15 @@ $(document).ready(function () {
     $("#nym_form").submit(function (e) { e.preventDefault(); return false; });
     if (!($("#nym").val())) { $("#nym").val("nym" + Math.floor(Math.random() * 65536)); }
 
-    G = new Ground(function () {
+    G = new Minimart.Ground(function () {
 	console.log('starting ground boot');
 	// World.spawn(new Spy());
-	spawnJQueryDriver();
-	spawnDOMDriver();
-	spawnRoutingTableWidget("#spy-holder", "spy");
+	Minimart.JQuery.spawnJQueryDriver();
+	Minimart.DOM.spawnDOMDriver();
+	Minimart.RoutingTableWidget.spawnRoutingTableWidget("#spy-holder", "spy");
 
-	World.spawn(new WakeDetector());
-	var wsconn = new WebSocketConnection("broker", $("#wsurl").val(), true);
+	World.spawn(new Minimart.WakeDetector());
+	var wsconn = new Minimart.WebSocket.WebSocketConnection("broker", $("#wsurl").val(), true);
 	World.spawn(wsconn);
 	World.spawn({
 	    // Monitor connection, notifying connectivity changes
@@ -74,7 +81,7 @@ $(document).ready(function () {
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
 		    var states =
-			route.matcherKeys(e.gestalt.project(route.compileProjection([__, _$]),
+			Route.matcherKeys(e.gestalt.project(Route.compileProjection([__, _$]),
 							    true, 0, 0));
 		    var newState = states.length > 0 ? states[0][0] : "crashed";
 		    if (this.state != newState) {

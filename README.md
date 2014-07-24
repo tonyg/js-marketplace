@@ -14,7 +14,7 @@ To install the Racket server:
 
 To run the Racket server:
 
- - `racket server.rkt` from the base directory of this repository.
+    racket -l minimart/examples/broker
 
 The Racket server listens for tunnelled Network Calculus events via
 websocket on ports 8000 (HTTP) and 8443 (HTTPS, if you have a

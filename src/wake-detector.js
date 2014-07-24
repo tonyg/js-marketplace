@@ -2,6 +2,12 @@
 // suspension/sleeping!) has caused periodic activities to be
 // interrupted, and warns others about it
 // Inspired by http://blog.alexmaccaw.com/javascript-wake-event
+var Minimart = require("./minimart.js");
+var World = Minimart.World;
+var sub = Minimart.sub;
+var pub = Minimart.pub;
+var __ = Minimart.__;
+var _$ = Minimart._$;
 
 function WakeDetector(period) {
     this.message = "wake";
@@ -25,3 +31,5 @@ WakeDetector.prototype.trigger = function () {
     }
     this.mostRecentTrigger = now;
 };
+
+module.exports.WakeDetector = WakeDetector;
