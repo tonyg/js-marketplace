@@ -6,30 +6,40 @@ var pub = Minimart.pub;
 var __ = Minimart.__;
 var _$ = Minimart._$;
 
-function spawnJQueryDriver(baseSelector, metaLevel) {
+function spawnJQueryDriver(baseSelector, metaLevel, wrapFunction) {
     metaLevel = metaLevel || 0;
-    var d = new Minimart.DemandMatcher(["jQuery", _$, _$, __], metaLevel,
+    wrapFunction = wrapFunction || defaultWrapFunction;
+    var d = new Minimart.DemandMatcher(wrapFunction(_$, _$, __), metaLevel,
 				       {demandSideIsSubscription: true});
     d.onDemandIncrease = function (captures) {
 	var selector = captures[0];
 	var eventName = captures[1];
-	World.spawn(new JQueryEventRouter(baseSelector, selector, eventName, metaLevel),
-		    [pub(["jQuery", selector, eventName, __], metaLevel),
-		     pub(["jQuery", selector, eventName, __], metaLevel, 1)]);
+	World.spawn(new JQueryEventRouter(baseSelector,
+					  selector,
+					  eventName,
+					  metaLevel,
+					  wrapFunction),
+		    [pub(wrapFunction(selector, eventName, __), metaLevel),
+		     pub(wrapFunction(selector, eventName, __), metaLevel, 1)]);
     };
     World.spawn(d);
 }
 
-function JQueryEventRouter(baseSelector, selector, eventName, metaLevel) {
+function defaultWrapFunction(selector, eventName, eventValue) {
+    return ["jQuery", selector, eventName, eventValue];
+}
+
+function JQueryEventRouter(baseSelector, selector, eventName, metaLevel, wrapFunction) {
     var self = this;
     this.baseSelector = baseSelector || null;
     this.selector = selector;
     this.eventName = eventName;
     this.metaLevel = metaLevel || 0;
+    this.wrapFunction = wrapFunction || defaultWrapFunction;
     this.preventDefault = (this.eventName.charAt(0) !== "+");
     this.handler =
 	World.wrap(function (e) {
-	    World.send(["jQuery", self.selector, self.eventName, e], self.metaLevel);
+	    World.send(self.wrapFunction(self.selector, self.eventName, e), self.metaLevel);
 	    if (self.preventDefault) e.preventDefault();
 	    return !self.preventDefault;
 	});
@@ -52,6 +62,24 @@ JQueryEventRouter.prototype.computeNodes = function () {
     }
 };
 
+function simplifyDOMEvent(e) {
+    var keys = [];
+    for (var k in e) {
+	var v = e[k];
+	if (typeof v === 'object') continue;
+	if (typeof v === 'function') continue;
+	keys.push(k);
+    }
+    keys.sort();
+    var simplified = [];
+    for (var i = 0; i < keys.length; i++) {
+	simplified.push([keys[i], e[keys[i]]]);
+    }
+    return simplified;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 module.exports.spawnJQueryDriver = spawnJQueryDriver;
+module.exports.simplifyDOMEvent = simplifyDOMEvent;
+module.exports.defaultWrapFunction = defaultWrapFunction;

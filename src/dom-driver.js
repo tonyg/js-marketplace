@@ -6,31 +6,45 @@ var pub = Minimart.pub;
 var __ = Minimart.__;
 var _$ = Minimart._$;
 
-function spawnDOMDriver() {
-    var d = new Minimart.DemandMatcher(["DOM", _$, _$, _$]);
+function spawnDOMDriver(domWrapFunction, jQueryWrapFunction) {
+    domWrapFunction = domWrapFunction || defaultWrapFunction;
+    var d = new Minimart.DemandMatcher(domWrapFunction(_$, _$, _$));
     d.onDemandIncrease = function (captures) {
 	var selector = captures[0];
 	var fragmentClass = captures[1];
 	var fragmentSpec = captures[2];
-	World.spawn(new DOMFragment(selector, fragmentClass, fragmentSpec),
-		    [sub(["DOM", selector, fragmentClass, fragmentSpec]),
-		     sub(["DOM", selector, fragmentClass, fragmentSpec], 0, 1)]);
+	World.spawn(new DOMFragment(selector,
+				    fragmentClass,
+				    fragmentSpec,
+				    domWrapFunction,
+				    jQueryWrapFunction),
+		    [sub(domWrapFunction(selector, fragmentClass, fragmentSpec)),
+		     sub(domWrapFunction(selector, fragmentClass, fragmentSpec), 0, 1)]);
     };
     World.spawn(d);
 }
 
-function DOMFragment(selector, fragmentClass, fragmentSpec) {
+function defaultWrapFunction(selector, fragmentClass, fragmentSpec) {
+    return ["DOM", selector, fragmentClass, fragmentSpec];
+}
+
+function DOMFragment(selector, fragmentClass, fragmentSpec, domWrapFunction, jQueryWrapFunction) {
     this.selector = selector;
     this.fragmentClass = fragmentClass;
     this.fragmentSpec = fragmentSpec;
+    this.domWrapFunction = domWrapFunction;
+    this.jQueryWrapFunction = jQueryWrapFunction;
     this.nodes = this.buildNodes();
 }
 
 DOMFragment.prototype.boot = function () {
     var self = this;
-    var monitoring = sub(["DOM", self.selector, self.fragmentClass, self.fragmentSpec], 1, 2);
+    var monitoring =
+	sub(this.domWrapFunction(self.selector, self.fragmentClass, self.fragmentSpec), 1, 2);
     World.spawn(new World(function () {
-	Minimart.JQuery.spawnJQueryDriver(self.selector+" > ."+self.fragmentClass, 1);
+	Minimart.JQuery.spawnJQueryDriver(self.selector+" > ."+self.fragmentClass,
+					  1,
+					  self.jQueryWrapFunction);
 	World.spawn({
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
@@ -98,3 +112,4 @@ DOMFragment.prototype.buildNodes = function () {
 ///////////////////////////////////////////////////////////////////////////
 
 module.exports.spawnDOMDriver = spawnDOMDriver;
+module.exports.defaultWrapFunction = defaultWrapFunction;
