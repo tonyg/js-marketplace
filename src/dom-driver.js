@@ -54,6 +54,10 @@ DOMFragment.prototype.handleEvent = function (e) {
     }
 };
 
+function isAttributes(x) {
+    return (x instanceof Array) && ((x.length === 0) || (x[0] instanceof Array));
+}
+
 DOMFragment.prototype.interpretSpec = function (spec) {
     // Fragment specs are roughly JSON-equivalents of SXML.
     // spec ::== ["tag", {"attr": "value", ...}, spec, spec, ...]
@@ -63,16 +67,14 @@ DOMFragment.prototype.interpretSpec = function (spec) {
 	return document.createTextNode(spec);
     } else if ($.isArray(spec)) {
 	var tagName = spec[0];
-	var hasAttrs = $.isPlainObject(spec[1]);
+	var hasAttrs = isAttributes(spec[1]);
 	var attrs = hasAttrs ? spec[1] : {};
 	var kidIndex = hasAttrs ? 2 : 1;
 
 	// Wow! Such XSS! Many hacks! So vulnerability! Amaze!
 	var n = document.createElement(tagName);
-	for (var attr in attrs) {
-	    if (attrs.hasOwnProperty(attr)) {
-		n.setAttribute(attr, attrs[attr]);
-	    }
+	for (var i = 0; i < attrs.length; i++) {
+	    n.setAttribute(attrs[i][0], attrs[i][1]);
 	}
 	for (var i = kidIndex; i < spec.length; i++) {
 	    n.appendChild(this.interpretSpec(spec[i]));
