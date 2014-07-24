@@ -1,7 +1,4 @@
 all:
-	npm run build
-
-deps:
 	npm install .
 
 keys: private-key.pem server-cert.pem
@@ -18,3 +15,7 @@ server-cert.pem: private-key.pem
 
 clean-keys:
 	rm -f private-key.pem server-cert.pem
+
+clean:
+	rm -f dist/*.js
+	rm -rf node_modules/
