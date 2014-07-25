@@ -205,8 +205,8 @@ dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
     var M2 = r.project(M, proj);
     dump(r.matcherKeys(M2));
     dump(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))));
-    dump(r.matcherKeysToObjects(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))),
-				proj));
+    dump(r.matcherKeysToObjects(r.matcherKeys(M2), proj));
+    dump(r.projectObjects(M, proj));
 })();
 
 (function () {
@@ -214,23 +214,9 @@ dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
     var M = r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
 		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
 		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
-    var proj = r.compileProjection([r._$("fst"), r._$("snd")]);
-    var M2 = r.project(M, proj);
-    dump(r.matcherKeys(M2));
-    dump(r.matcherKeysToObjects(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))),
-				proj));
-})();
-
-(function () {
-    console.log("matcherKeys using multiple-values in projections, with partial names");
-    var M = r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
-		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
-		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
-    var proj = r.compileProjection([r._$, r._$("snd")]);
-    var M2 = r.project(M, proj);
-    dump(r.matcherKeys(M2));
-    dump(r.matcherKeysToObjects(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))),
-				proj));
+    dump(r.projectObjects(M, r.compileProjection([r._$("fst"), r._$("snd")])));
+    dump(r.projectObjects(M, r.compileProjection([r._$, r._$("snd")])));
+    dump(r.projectObjects(M, r.compileProjection([r._$("fst"), r._$])));
 })();
 
 (function () {
@@ -288,4 +274,20 @@ dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
     dumpM(M2a);
     dump(r.matcherEquals(M1a, M1b) === true);
     dump(r.matcherEquals(M2a, M2b) === true);
+})();
+
+(function () {
+    console.log("Calls to matchPattern");
+    dump(r.matchPattern([1, 2, 3], [r.__, 2, r._$]));
+    dump(r.matchPattern([1, 2, 3], [r.__, 2, r._$("three")]));
+    dump(r.matchPattern([1, 2, 3], [r._$, 2, r._$("three")]));
+    dump(r.matchPattern([1, 2, 3], [r._$("one"), 2, r._$]));
+    dump(r.matchPattern([1, 2, 3], [r._$("one"), 2, r._$("three")]));
+    dump(r.matchPattern([1, 2, 3], [r.__, 999, r._$("three")]) === null);
+    dump(r.matchPattern([1, 2, 3], [r.__, 2, r._$("three"), 4]) === null);
+
+    dump(r.matchPattern([1, [2, 999], 3], [r._$("one"), r._$(null, [2, r.__]), r._$("three")]));
+    dump(r.matchPattern([1, [2, 999], 3], [r._$("one"), r._$("two", [2, r.__]), r._$("three")]));
+    dump(r.matchPattern([1, [2, 999], 3], [r._$("one"), r._$(null, [2, r._$]), r._$("three")]));
+    dump(r.matchPattern([1, [2, 999], 3], [r._$("one"), r._$("two", [2, r._$]), r._$("three")]));
 })();

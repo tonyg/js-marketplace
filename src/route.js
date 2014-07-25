@@ -145,6 +145,45 @@ function compilePattern(v, p) {
     }
 }
 
+function matchPattern(v, p) {
+    var captureCount = 0;
+    var result = {};
+    try {
+	walk(v, p);
+    } catch (e) {
+	if (e.matchPatternFailed) return null;
+	throw e;
+    }
+    result.length = captureCount;
+    return result;
+
+    function walk(v, p) {
+	if (p === v) return;
+
+	if (p === __) return;
+
+	if (Array.isArray(p) && Array.isArray(v) && p.length === v.length) {
+	    for (var i = 0; i < p.length; i++) {
+		walk(v[i], p[i]);
+	    }
+	    return;
+	}
+
+	if (isCapture(p)) {
+	    var thisCapture = captureCount++;
+	    walk(v, capturePattern(p));
+	    result[captureName(p) || ('$' + thisCapture)] = v;
+	    return;
+	}
+
+	if (p instanceof $Embedded) {
+	    die("$Embedded patterns not supported in matchPattern()");
+	}
+
+	throw {matchPatternFailed: true};
+    }
+}
+
 function shallowCopyArray(s) {
     return s.slice();
 }
@@ -1044,11 +1083,15 @@ function matcherKeysToObjects(matcherKeysResult, compiledProjection) {
 	var e = matcherKeysResult[i];
 	var d = {};
 	for (var j = 0; j < e.length; j++) {
-	    d[compiledProjection.names[j] || j] = e[j];
+	    d[compiledProjection.names[j] || ('$' + j)] = e[j];
 	}
 	result.push(d);
     }
     return result;
+}
+
+function projectObjects(m, compiledProjection) {
+    return matcherKeysToObjects(matcherKeys(project(m, compiledProjection)), compiledProjection);
 }
 
 function prettyMatcher(m, initialIndent) {
@@ -1514,6 +1557,7 @@ module.exports.is_emptyMatcher = is_emptyMatcher;
 module.exports.emptyMatcher = emptyMatcher;
 module.exports.embeddedMatcher = embeddedMatcher;
 module.exports.compilePattern = compilePattern;
+module.exports.matchPattern = matchPattern;
 module.exports.union = unionN;
 module.exports.intersect = intersect;
 module.exports.erasePath = erasePath;
@@ -1526,6 +1570,7 @@ module.exports.projectionToPattern = projectionToPattern;
 module.exports.project = project;
 module.exports.matcherKeys = matcherKeys;
 module.exports.matcherKeysToObjects = matcherKeysToObjects;
+module.exports.projectObjects = projectObjects;
 module.exports.matcherEquals = matcherEquals;
 module.exports.prettyMatcher = prettyMatcher;
 module.exports.serializeMatcher = serializeMatcher;
