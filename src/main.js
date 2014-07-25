@@ -8,3 +8,4 @@ module.exports.Reflect = require("./reflect.js");
 
 module.exports.Spy = require("./spy.js").Spy;
 module.exports.WakeDetector = require("./wake-detector.js").WakeDetector;
+module.exports.Actor = require("./actor.js").Actor;
