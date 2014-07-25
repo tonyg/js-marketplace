@@ -291,3 +291,19 @@ dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
     dump(r.matchPattern([1, [2, 999], 3], [r._$("one"), r._$(null, [2, r._$]), r._$("three")]));
     dump(r.matchPattern([1, [2, 999], 3], [r._$("one"), r._$("two", [2, r._$]), r._$("three")]));
 })();
+
+(function () {
+    console.log("Projection with no captures");
+    dumpM(r.project(r.compilePattern(r.arrayToSet(['A']), ["X", r.__]),
+		    r.compileProjection(r.__)));
+    dumpM(r.project(r.compilePattern(r.arrayToSet(['A']), ["X", r.__]),
+		    r.compileProjection([r.__, r.__])));
+    dumpM(r.project(r.compilePattern(r.arrayToSet(['A']), ["X", r.__]),
+		    r.compileProjection(["X", r.__])));
+    dumpM(r.project(r.compilePattern(r.arrayToSet(['A']), ["X", r.__]),
+		    r.compileProjection(["Y", r.__])));
+    dumpM(r.project(r.compilePattern(r.arrayToSet(['A']), ["X", r.__]),
+		    r.compileProjection([r.__, r._$])));
+    dumpM(r.project(r.compilePattern(r.arrayToSet(['A']), ["X", r.__]),
+		    r.compileProjection([r._$, r._$])));
+})();
