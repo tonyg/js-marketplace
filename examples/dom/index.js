@@ -1,6 +1,7 @@
 var G;
 $(document).ready(function () {
     var World = Minimart.World;
+    var Actor = Minimart.Actor;
     var sub = Minimart.sub;
     var pub = Minimart.pub;
     var __ = Minimart.__;
@@ -12,35 +13,39 @@ $(document).ready(function () {
 	Minimart.DOM.spawnDOMDriver();
 	Minimart.RoutingTableWidget.spawnRoutingTableWidget("#spy-holder", "spy");
 
-	World.spawn({
-	    handleEvent: function (e) {
-		if (e.type === "message" && e.message[0] === "jQuery") {
+	World.spawn(new Actor(function () {
+	    Actor.subscribe(
+		function () { return ["jQuery", "button.clicker", "click", __]; },
+		function () {
 		    World.send("bump_count");
-		}
-	    }
-	}, [pub(["DOM", "#clicker-holder", "clicker",
-		 ["button", ["span", [["style", "font-style: italic"]], "Click me!"]]]),
-	    pub("bump_count"),
-	    sub(["jQuery", "button.clicker", "click", __])]);
+		});
 
-	World.spawn({
-	    counter: 0,
-	    boot: function () {
-		this.updateState();
-	    },
-	    updateState: function () {
-		World.updateRoutes([sub("bump_count"),
-				    pub(["DOM", "#counter-holder", "counter",
-					 ["div",
-					  ["p", "The current count is: ", this.counter]]])]);
-	    },
-	    handleEvent: function (e) {
-		if (e.type === "message" && e.message === "bump_count") {
+	    Actor.advertise(
+		function () { return "bump_count"; });
+	    Actor.advertise(
+		function () {
+		    return ["DOM", "#clicker-holder", "clicker",
+			    ["button", ["span", [["style", "font-style: italic"]], "Click me!"]]];
+		});
+	}));
+
+	World.spawn(new Actor(function () {
+	    this.counter = 0;
+
+	    Actor.subscribe(
+		function () { return "bump_count"; },
+		function () {
 		    this.counter++;
-		    this.updateState();
-		}
-	    }
-	});
+		    this.updateRoutes();
+		});
+
+	    Actor.advertise(
+		function () {
+		    return ["DOM", "#counter-holder", "counter",
+			    ["div",
+			     ["p", "The current count is: ", this.counter]]];
+		});
+	}));
     });
     G.startStepping();
 });
