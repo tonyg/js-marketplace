@@ -355,7 +355,7 @@ World.prototype.textProcessTree = function (ownPid) {
     var lines = [];
 
     function dumpProcess(prefix, pid, p) {
-	if (p instanceof Array) {
+	if (Array.isArray(p)) {
 	    lines.push(prefix + '--+ ' + pid);
 	    for (var i = 0; i < p.length; i++) {
 		dumpProcess(prefix + '  |', p[i][0], p[i][1]);

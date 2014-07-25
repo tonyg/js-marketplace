@@ -69,7 +69,7 @@ DOMFragment.prototype.handleEvent = function (e) {
 };
 
 function isAttributes(x) {
-    return (x instanceof Array) && ((x.length === 0) || (x[0] instanceof Array));
+    return Array.isArray(x) && ((x.length === 0) || Array.isArray(x[0]));
 }
 
 DOMFragment.prototype.interpretSpec = function (spec) {

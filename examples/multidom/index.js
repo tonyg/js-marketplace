@@ -33,7 +33,7 @@ $(document).ready(function () {
 		console.log(JSON.stringify(e));
 		if (e.type === "message"
 		    && e.message[0] === "broker"
-		    && e.message[2] instanceof Array
+		    && Array.isArray(e.message[2])
 		    && e.message[2][0] === "multidom"
 		    && e.message[2][1] === "jQuery")
 		{
