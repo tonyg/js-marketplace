@@ -4,7 +4,6 @@ var World = Minimart.World;
 var sub = Minimart.sub;
 var pub = Minimart.pub;
 var __ = Minimart.__;
-var _$ = Minimart._$;
 
 function spawnRoutingTableWidget(selector, fragmentClass, domWrap, observationLevel) {
     observationLevel = observationLevel || 10;
