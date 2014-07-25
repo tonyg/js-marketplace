@@ -15,17 +15,20 @@ function embeddedMatcher(matcher) {
     return new $Embedded(matcher);
 }
 
+// The name argument should be a string or null; it defaults to null.
 // The pattern argument defaults to wildcard, __.
-function $Capture(pattern) {
+function $Capture(name, pattern) {
+    this.name = name || null;
     this.pattern = (typeof pattern === 'undefined' ? __ : pattern);
 }
 
-// Abbreviation: _$(x) <==> new $Capture(x)
-function _$(pattern) {
-    return new $Capture(pattern);
+// Abbreviation: _$(...) <==> new $Capture(...)
+function _$(name, pattern) {
+    return new $Capture(name, pattern);
 }
 
 function isCapture(x) { return x instanceof $Capture || x === _$; }
+function captureName(x) { return x instanceof $Capture ? x.name : null; }
 function capturePattern(x) { return x instanceof $Capture ? x.pattern : __; }
 
 var SOC = "__{{"; // start of capture
@@ -745,15 +748,17 @@ function relabel(m, f) {
 }
 
 function compileProjection(/* projection, projection, ... */) {
+    var names = [];
     var acc = [];
     for (var i = 0; i < arguments.length; i++) {
 	walk(arguments[i]);
     }
     acc.push(EOA);
-    return acc;
+    return {names: names, spec: acc};
 
     function walk(p) {
 	if (isCapture(p)) {
+	    names.push(captureName(p));
 	    acc.push(SOC);
 	    walk(capturePattern(p));
 	    acc.push(EOC);
@@ -803,7 +808,8 @@ function projectionToPattern(p) {
     }
 }
 
-function project(m, spec) {
+function project(m, compiledProjection) {
+    var spec = compiledProjection.spec;
     return walk(false, m, 0);
 
     function walk(isCapturing, m, specIndex) {
@@ -1029,6 +1035,20 @@ function matcherKeys(m) {
 	if (opener === SOA) return vs;
 	die("Internal error: unknown opener " + opener);
     }
+}
+
+function matcherKeysToObjects(matcherKeysResult, compiledProjection) {
+    if (matcherKeysResult === null) return null;
+    var result = [];
+    for (var i = 0; i < matcherKeysResult.length; i++) {
+	var e = matcherKeysResult[i];
+	var d = {};
+	for (var j = 0; j < e.length; j++) {
+	    d[compiledProjection.names[j] || j] = e[j];
+	}
+	result.push(d);
+    }
+    return result;
 }
 
 function prettyMatcher(m, initialIndent) {
@@ -1505,6 +1525,7 @@ module.exports.compileProjection = compileProjection;
 module.exports.projectionToPattern = projectionToPattern;
 module.exports.project = project;
 module.exports.matcherKeys = matcherKeys;
+module.exports.matcherKeysToObjects = matcherKeysToObjects;
 module.exports.matcherEquals = matcherEquals;
 module.exports.prettyMatcher = prettyMatcher;
 module.exports.serializeMatcher = serializeMatcher;

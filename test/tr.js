@@ -47,17 +47,17 @@ console.log("projections");
 
 dumpM(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), r.__),
 			r.compilePattern(r.arrayToSet(['B']), ['b'])),
-		r.compileProjection(r._$([[r.__]]))));
+		r.compileProjection(r._$("v", [[r.__]]))));
 
 dumpM(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
 			r.compilePattern(r.arrayToSet(['C']), [1, 3]),
 			r.compilePattern(r.arrayToSet(['B']), [3, 4])),
-		r.compileProjection([r._$(), r._$()])));
+		r.compileProjection([r._$, r._$])));
 
 dump(r.matcherKeys(r.project(r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
 				     r.compilePattern(r.arrayToSet(['C']), [1, 3]),
 				     r.compilePattern(r.arrayToSet(['B']), [3, 4])),
-			     r.compileProjection([r._$(), r._$()]))));
+			     r.compileProjection([r._$, r._$]))));
 
 var R1 = r.compilePattern(r.arrayToSet(['A']), [r.__, "B"]);
 var R2 = r.compilePattern(r.arrayToSet(['B']), ["A", r.__]);
@@ -185,9 +185,9 @@ dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
     var M = r.union(r.compilePattern(r.arrayToSet(['A']), [r.__, 2]),
 		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
 		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
-    dump(r.matcherKeys(r.project(M, r.compileProjection([r._$(), r._$()]))));
+    dump(r.matcherKeys(r.project(M, r.compileProjection([r._$, r._$]))));
     dump(r.matcherKeys(r.project(M, r.compileProjection([r.__, r._$]))));
-    var M2 = r.project(M, r.compileProjection([r._$(), r._$()]));
+    var M2 = r.project(M, r.compileProjection([r._$, r._$]));
     dump(r.matcherKeys(r.project(M2,
 				 r.compileProjection(r.__, r._$))));
     dump(r.matcherKeys(r.project(r.compilePattern(true, [r.embeddedMatcher(M2)]),
@@ -201,9 +201,36 @@ dumpM(r.union(r.compilePattern(r.arrayToSet('A'), [2]),
     var M = r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
 		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
 		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
-    var M2 = r.project(M, r.compileProjection([r._$(), r._$()]));
+    var proj = r.compileProjection([r._$, r._$]);
+    var M2 = r.project(M, proj);
     dump(r.matcherKeys(M2));
-    dump(r.matcherKeys(r.project(M2, r.compileProjection(r._$(), r._$()))));
+    dump(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))));
+    dump(r.matcherKeysToObjects(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))),
+				proj));
+})();
+
+(function () {
+    console.log("matcherKeys using multiple-values in projections, with names");
+    var M = r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
+		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
+    var proj = r.compileProjection([r._$("fst"), r._$("snd")]);
+    var M2 = r.project(M, proj);
+    dump(r.matcherKeys(M2));
+    dump(r.matcherKeysToObjects(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))),
+				proj));
+})();
+
+(function () {
+    console.log("matcherKeys using multiple-values in projections, with partial names");
+    var M = r.union(r.compilePattern(r.arrayToSet(['A']), [1, 2]),
+		    r.compilePattern(r.arrayToSet(['C']), [1, 3]),
+		    r.compilePattern(r.arrayToSet(['B']), [3, 4]));
+    var proj = r.compileProjection([r._$, r._$("snd")]);
+    var M2 = r.project(M, proj);
+    dump(r.matcherKeys(M2));
+    dump(r.matcherKeysToObjects(r.matcherKeys(r.project(M2, r.compileProjection(r._$, r._$))),
+				proj));
 })();
 
 (function () {
