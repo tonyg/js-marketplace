@@ -1,5 +1,6 @@
 var Route = Minimart.Route;
 var World = Minimart.World;
+var Actor = Minimart.Actor;
 var sub = Minimart.sub;
 var pub = Minimart.pub;
 var __ = Minimart.__;
@@ -8,10 +9,6 @@ var _$ = Minimart._$;
 function chatEvent(nym, status, utterance, stamp) {
     return ["chatEvent", nym, status, utterance, stamp || +(new Date())];
 }
-function chatEventNym(c) { return c[1]; }
-function chatEventStatus(c) { return c[2]; }
-function chatEventUtterance(c) { return c[3]; }
-function chatEventStamp(c) { return c[4]; }
 
 function outputItem(item) {
     var stamp = $("<span/>").text((new Date()).toGMTString()).addClass("timestamp");
@@ -22,12 +19,10 @@ function outputItem(item) {
     return item;
 }
 
-function updateNymList(g) {
+function updateNymList(allStatuses) {
     var statuses = {};
-    var nymProj = ["broker", 0, ["chatEvent", _$, _$, __, __]];
-    var matchedNyms = Route.matcherKeys(g.project(Route.compileProjection(nymProj), true, 0, 0));
-    for (var i = 0; i < matchedNyms.length; i++) {
-	statuses[matchedNyms[i][0]] = matchedNyms[i][1];
+    for (var i = 0; i < allStatuses.length; i++) {
+	statuses[allStatuses[i].nym] = allStatuses[i].status;
     }
     var nyms = [];
     for (var nym in statuses) { nyms.push(nym); }
@@ -72,91 +67,71 @@ $(document).ready(function () {
 	World.spawn(new Minimart.WakeDetector());
 	var wsconn = new Minimart.WebSocket.WebSocketConnection("broker", $("#wsurl").val(), true);
 	World.spawn(wsconn);
-	World.spawn({
+	World.spawn(new Actor(function () {
 	    // Monitor connection, notifying connectivity changes
-	    state: "crashed", // start with this to avoid spurious initial message print
-	    boot: function () {
-		World.updateRoutes([sub(["broker_state", __], 0, 1)]);
-	    },
-	    handleEvent: function (e) {
-		if (e.type === "routes") {
-		    var states =
-			Route.matcherKeys(e.gestalt.project(Route.compileProjection([__, _$]),
-							    true, 0, 0));
-		    var newState = states.length > 0 ? states[0][0] : "crashed";
+	    this.state = "crashed"; // start with this to avoid spurious initial message print
+
+	    Actor.observeAdvertisers(
+		function () { return ["broker_state", _$("newState")]; },
+		{ name: "states" },
+		function () {
+		    var newState = this.states.length > 0 ? this.states[0].newState : "crashed";
 		    if (this.state != newState) {
 			outputState(newState);
 			this.state = newState;
 		    }
-		}
-	    }
-	});
-	World.spawn({
+		});
+	}));
+	World.spawn(new Actor(function () {
 	    // Actual chat functionality
-	    boot: function () {
-		World.updateRoutes(this.subscriptions());
-	    },
-	    nym: function () { return $("#nym").val(); },
-	    currentStatus: function () { return $("#status").val(); },
-	    subscriptions: function () {
-		return [sub("wake"),
-			sub(["jQuery", "#send_chat", "click", __]),
-			sub(["jQuery", "#nym", "change", __]),
-			sub(["jQuery", "#status", "change", __]),
-			sub(["jQuery", "#wsurl", "change", __]),
-			pub(["broker", 0, chatEvent(this.nym(), this.currentStatus(), __, __)]),
-			sub(["broker", 0, chatEvent(__, __, __, __)], 0, 1)];
-	    },
-	    handleEvent: function (e) {
-		var self = this;
-		switch (e.type) {
-		case "routes":
-		    updateNymList(e.gestalt);
-		    break;
-		case "message":
-		    if (e.message === "wake") {
-			wsconn.forceclose();
-			return;
+	    this.nym = function () { return $("#nym").val(); };
+	    this.currentStatus = function () { return $("#status").val(); };
+
+	    Actor.subscribe(
+		function () { return "wake"; },
+		function () { wsconn.forceclose(); });
+
+	    Actor.advertise(
+		function () { return ["broker", 0,
+				      chatEvent(this.nym(), this.currentStatus(), __, __)]; });
+	    Actor.observeAdvertisers(
+		function () { return ["broker", 0,
+				      chatEvent(_$("nym"), _$("status"), __, __)]; },
+		{ name: "allStatuses" },
+		function () { updateNymList(this.allStatuses); });
+
+	    Actor.subscribe(
+		function () { return ["jQuery", "#send_chat", "click", __]; },
+		function () {
+		    var inp = $("#chat_input");
+		    var utterance = inp.val();
+		    inp.val("");
+		    if (utterance) {
+			World.send(["broker", 0, chatEvent(this.nym(),
+							   this.currentStatus(),
+							   utterance)]);
 		    }
-		    switch (e.message[0]) {
-		    case "jQuery":
-			switch (e.message[1])  {
-			case "#send_chat":
-			    var inp = $("#chat_input");
-			    var utterance = inp.val();
-			    inp.val("");
-			    if (utterance) {
-				World.send(["broker", 0, chatEvent(this.nym(),
-								   this.currentStatus(),
-								   utterance)]);
-			    }
-			    break;
-			case "#nym":
-			case "#status":
-			    World.updateRoutes(this.subscriptions());
-			    break;
-			case "#wsurl":
-			    wsconn.forceclose();
-			    wsconn.wsurl = $("#wsurl").val();
-			    break;
-			default:
-			    console.log("Got jquery event from as-yet-unhandled subscription",
-					e.message[2], e.message[3]);
-			}
-			break;
-		    case "broker":
-			if (e.message[2][0] === "chatEvent") {
-			    outputUtterance(chatEventNym(e.message[2]),
-					    chatEventUtterance(e.message[2]));
-			}
-			break;
-		    default:
-			break;
-		    }
-		    break;
-		}
-	    }
-	});
+		});
+
+	    Actor.subscribe(
+		function () { return ["jQuery", "#nym", "change", __]; },
+		function () { this.updateRoutes(); });
+
+	    Actor.subscribe(
+		function () { return ["jQuery", "#status", "change", __]; },
+		function () { this.updateRoutes(); });
+
+	    Actor.subscribe(
+		function () { return ["jQuery", "#wsurl", "change", __]; },
+		function () {
+		    wsconn.forceclose();
+		    wsconn.wsurl = $("#wsurl").val();
+		});
+
+	    Actor.subscribe(
+		function () { return ["broker", 0, chatEvent(_$("who"), __, _$("what"), __)]; },
+		function (who, what) { outputUtterance(who, what); });
+	}));
     });
     G.startStepping();
 });
