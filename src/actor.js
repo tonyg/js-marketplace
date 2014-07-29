@@ -23,7 +23,7 @@ function checkChunks(type) {
     }
 }
 
-function extractChunk(type, defaultOptions, args) {
+function extractChunk(type, kind, defaultOptions, args) {
     var rawProjectionFn = args[0]
     var options = null;
     var handler = null;
@@ -54,6 +54,7 @@ function extractChunk(type, defaultOptions, args) {
     }
     return {
 	type: type,
+	kind: kind,
 	rawProjectionFn: rawProjectionFn,
 	options: options,
 	handler: handler
@@ -64,16 +65,17 @@ function recordChunk(chunk) {
     Actor._chunks.push(chunk);
 }
 
-function chunkExtractor(type, defaultOptions) {
+function chunkExtractor(type, kind, defaultOptions) {
     return function (/* ... */) {
 	checkChunks(type);
 	recordChunk(extractChunk(type,
+				 kind,
 				 defaultOptions,
 				 Array.prototype.slice.call(arguments)));
     };
 }
 
-var participatorDefaults = {
+var participantDefaults = {
     metaLevel: 0,
     when: function () { return true; }
 };
@@ -89,16 +91,17 @@ var observerDefaults = {
     removed: null
 };
 
-Actor.advertise = chunkExtractor('advertise', participatorDefaults);
-Actor.subscribe = chunkExtractor('subscribe', participatorDefaults);
+Actor.advertise = chunkExtractor('advertise', 'participant', participantDefaults);
+Actor.subscribe = chunkExtractor('subscribe', 'participant', participantDefaults);
 
-Actor.observeAdvertisers = chunkExtractor('observeAdvertisers', observerDefaults);
-Actor.observeSubscribers = chunkExtractor('observeSubscribers', observerDefaults);
+Actor.observeAdvertisers = chunkExtractor('observeAdvertisers', 'observer', observerDefaults);
+Actor.observeSubscribers = chunkExtractor('observeSubscribers', 'observer', observerDefaults);
 
 Actor.observeGestalt = function (gestaltFn, eventHandlerFn) {
     checkChunks('observeGestalt');
     recordChunk({
 	type: 'observeGestalt',
+	kind: 'raw',
 	gestaltFn: gestaltFn,
 	options: {
 	    when: function () { return true; }
@@ -116,6 +119,15 @@ function finalizeActor(behavior, chunks) {
 
     behavior.boot = function () {
 	if (oldBoot) { oldBoot.call(this); }
+	for (var i = 0; i < chunks.length; i++) {
+	    var chunk = chunks[i];
+	    if (chunk.kind === 'observer') {
+		if (chunk.options.presence) { this[chunk.options.presence] = false; }
+		if (chunk.options.name) { this[chunk.options.name] = []; }
+		if (chunk.options.added) { this[chunk.options.added] = []; }
+		if (chunk.options.removed) { this[chunk.options.removed] = []; }
+	    }
+	}
 	this.updateRoutes();
     };
 
@@ -124,12 +136,11 @@ function finalizeActor(behavior, chunks) {
 	for (var i = 0; i < chunks.length; i++) {
 	    var chunk = chunks[i];
 	    if (chunk.options.when.call(this)) {
-		switch (chunk.type) {
-		case 'observeGestalt':
+		switch (chunk.kind) {
+		case 'raw':
 		    newRoutes = newRoutes.union(chunk.gestaltFn.call(this));
 		    break;
-		case 'advertise': // fall through
-		case 'subscribe':
+		case 'participant':
 		    var proj = chunk.rawProjectionFn.call(this);
 		    projections[i] = proj;
 		    var g = Route.simpleGestalt(chunk.type === 'advertise',
@@ -138,8 +149,7 @@ function finalizeActor(behavior, chunks) {
 						0);
 		    newRoutes = newRoutes.union(g);
 		    break;
-		case 'observeSubscribers': // fall through
-		case 'observeAdvertisers':
+		case 'observer':
 		    var proj = chunk.rawProjectionFn.call(this);
 		    projections[i] = proj;
 		    compiledProjections[i] = Route.compileProjection(proj);
@@ -153,7 +163,7 @@ function finalizeActor(behavior, chunks) {
 		    }
 		    break;
 		default:
-		    throw new Error("Unsupported chunk type: "+chunk.type);
+		    throw new Error("Unsupported chunk type/kind: "+chunk.type+"/"+chunk.kind);
 		}
 	    }
 	}
@@ -164,12 +174,11 @@ function finalizeActor(behavior, chunks) {
 	if (oldHandleEvent) { oldHandleEvent.call(this, e); }
 	for (var i = 0; i < chunks.length; i++) {
 	    var chunk = chunks[i];
-	    switch (chunk.type) {
-	    case 'observeGestalt':
+	    switch (chunk.kind) {
+	    case 'raw':
 		chunk.eventHandlerFn.call(this, e);
 		break;
-	    case 'advertise': // fall through
-	    case 'subscribe':
+	    case 'participant':
 		if (chunk.handler
 		    && (e.type === 'message')
 		    && (e.isFeedback === (chunk.type === 'advertise')))
@@ -180,8 +189,7 @@ function finalizeActor(behavior, chunks) {
 		    }
 		}
 		break;
-	    case 'observeSubscribers': // fall through
-	    case 'observeAdvertisers':
+	    case 'observer':
 		if (e.type === 'routes') {
 		    var projectionResult = e.gestalt.project(compiledProjections[i],
 							     chunk.type !== 'observeSubscribers',
@@ -234,7 +242,7 @@ function finalizeActor(behavior, chunks) {
 		}
 		break;
 	    default:
-		throw new Error("Unsupported chunk type: "+chunk.type);
+		throw new Error("Unsupported chunk type/kind: "+chunk.type+"/"+chunk.kind);
 	    }
 	}
     };
