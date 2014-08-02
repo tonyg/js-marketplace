@@ -18,4 +18,6 @@ clean-keys:
 
 clean:
 	rm -f dist/*.js
+
+veryclean: clean
 	rm -rf node_modules/
