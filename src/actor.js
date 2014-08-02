@@ -181,6 +181,7 @@ function finalizeActor(behavior, chunks) {
 	    case 'participant':
 		if (chunk.handler
 		    && (e.type === 'message')
+		    && (e.metaLevel === chunk.options.metaLevel)
 		    && (e.isFeedback === (chunk.type === 'advertise')))
 		{
 		    var matchResult = Route.matchPattern(e.message, projections[i]);
