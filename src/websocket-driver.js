@@ -1,4 +1,5 @@
 var Minimart = require("./minimart.js");
+var Codec = require("./codec.js");
 var Route = Minimart.Route;
 var World = Minimart.World;
 var sub = Minimart.sub;
@@ -97,7 +98,7 @@ WebSocketConnection.prototype.safeSend = function (m) {
 
 WebSocketConnection.prototype.sendLocalRoutes = function () {
     var newLocalRoutesMessage =
-	JSON.stringify(encodeEvent(Minimart.updateRoutes([this.localGestalt])));
+	JSON.stringify(Codec.encodeEvent(Minimart.updateRoutes([this.localGestalt])));
     if (this.prevLocalRoutesMessage !== newLocalRoutesMessage) {
 	this.prevLocalRoutesMessage = newLocalRoutesMessage;
 	this.safeSend(newLocalRoutesMessage);
@@ -138,7 +139,7 @@ WebSocketConnection.prototype.handleEvent = function (e) {
 	var m = e.message;
 	if (m.length && m.length === 3 && m[0] === this.label)
 	{
-	    var encoded = JSON.stringify(encodeEvent(
+	    var encoded = JSON.stringify(Codec.encodeEvent(
 		Minimart.sendMessage(m[2], m[1], e.isFeedback)));
 	    if (this.deduplicator.accept(encoded)) {
 		this.safeSend(encoded);
@@ -228,31 +229,5 @@ WebSocketConnection.prototype.onclose = function (e) {
 };
 
 ///////////////////////////////////////////////////////////////////////////
-// Wire protocol representation of events and actions
-
-function encodeEvent(e) {
-    switch (e.type) {
-    case "routes":
-	return ["routes", e.gestalt.serialize(function (v) { return true; })];
-    case "message":
-	return ["message", e.message, e.metaLevel, e.isFeedback];
-    }
-}
-
-function decodeAction(j) {
-    switch (j[0]) {
-    case "routes":
-	return Minimart.updateRoutes([
-	    Route.deserializeGestalt(j[1], function (v) { return true; })]);
-    case "message":
-	return Minimart.sendMessage(j[1], j[2], j[3]);
-    default:
-	throw { message: "Invalid JSON-encoded action: " + JSON.stringify(j) };
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
 
 module.exports.WebSocketConnection = WebSocketConnection;
-module.exports.encodeEvent = encodeEvent;
-module.exports.decodeAction = decodeAction;
