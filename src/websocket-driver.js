@@ -193,7 +193,7 @@ WebSocketConnection.prototype.onmessage = function (wse) {
 	return; // recordActivity already took care of our timers
     }
 
-    var e = decodeAction(j);
+    var e = Codec.decodeAction(j);
     switch (e.type) {
     case "routes":
 	if (this.prevPeerRoutesMessage !== wse.data) {
