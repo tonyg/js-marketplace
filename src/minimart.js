@@ -365,11 +365,15 @@ World.prototype.textProcessTree = function (ownPid) {
 	} else {
 	    var label = p.behavior.name || p.behavior.constructor.name || '';
 	    var tombstoneString = p.exitReason ? ' (EXITED: ' + p.exitReason + ') ' : '';
-	    lines.push(prefix + '-- ' + pid + ': ' + label +
-		       tombstoneString +
-		       JSON.stringify(p.behavior, function (k, v) {
-			   return k === 'name' ? undefined : v;
-		       }));
+	    var stringifiedState;
+	    try {
+	      stringifiedState = JSON.stringify(p.behavior, function (k, v) {
+		return (k === 'name') ? undefined : v;
+	      });
+	    } catch (e) {
+	      stringifiedState = "(cannot convert process state to JSON)";
+	    }
+	    lines.push(prefix + '-- ' + pid + ': ' + label + tombstoneString + stringifiedState);
 	}
     }
 
