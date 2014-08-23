@@ -348,7 +348,7 @@ World.prototype.processTree = function () {
     for (var pid in this.tombstones) {
 	kids.push([pid, this.tombstones[pid]]);
     }
-    kids.sort();
+    kids.sort(function (a, b) { return a[0] - b[0] });
     return kids;
 };
 
