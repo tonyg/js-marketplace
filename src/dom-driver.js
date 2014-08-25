@@ -94,6 +94,8 @@ DOMFragment.prototype.interpretSpec = function (spec) {
 	    n.appendChild(this.interpretSpec(spec[i]));
 	}
 	return n;
+    } else {
+        throw new Error("Ill-formed DOM specification");
     }
 };
 
