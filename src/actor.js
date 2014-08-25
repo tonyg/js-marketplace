@@ -86,6 +86,7 @@ var observerDefaults = {
     when: function () { return true; },
     presence: null,
     name: null,
+    singleton: null,
     set: null,
     added: null,
     removed: null
@@ -124,6 +125,7 @@ function finalizeActor(behavior, chunks) {
 	    if (chunk.kind === 'observer') {
 		if (chunk.options.presence) { this[chunk.options.presence] = false; }
 		if (chunk.options.name) { this[chunk.options.name] = []; }
+		if (chunk.options.singleton) { this[chunk.options.singleton] = undefined; }
 		if (chunk.options.added) { this[chunk.options.added] = []; }
 		if (chunk.options.removed) { this[chunk.options.removed] = []; }
 	    }
@@ -219,6 +221,9 @@ function finalizeActor(behavior, chunks) {
 		    }
 		    if (chunk.options.name) {
 			this[chunk.options.name] = objs;
+		    }
+		    if (chunk.options.singleton) {
+			this[chunk.options.singleton] = objs.length === 1 ? objs[0] : undefined;
 		    }
 
 		    if (chunk.options.added || chunk.options.removed) {
