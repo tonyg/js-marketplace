@@ -399,10 +399,13 @@ function DemandMatcher(projection, metaLevel, options) {
     options = Util.extend({
 	demandLevel: 0,
 	supplyLevel: 0,
-	demandSideIsSubscription: false
+	demandSideIsSubscription: false,
+	supplyProjection: projection
     }, options);
-    this.pattern = Route.projectionToPattern(projection);
-    this.projectionSpec = Route.compileProjection(projection);
+    this.demandPattern = Route.projectionToPattern(projection);
+    this.supplyPattern = Route.projectionToPattern(options.supplyProjection);
+    this.demandProjectionSpec = Route.compileProjection(projection);
+    this.supplyProjectionSpec = Route.compileProjection(options.supplyProjection);
     this.metaLevel = metaLevel | 0;
     this.demandLevel = options.demandLevel;
     this.supplyLevel = options.supplyLevel;
@@ -419,8 +422,8 @@ function DemandMatcher(projection, metaLevel, options) {
 
 DemandMatcher.prototype.boot = function () {
     var observerLevel = 1 + Math.max(this.demandLevel, this.supplyLevel);
-    World.updateRoutes([sub(this.pattern, this.metaLevel, observerLevel),
-			pub(this.pattern, this.metaLevel, observerLevel)]);
+    World.updateRoutes([sub(this.demandPattern, this.metaLevel, observerLevel),
+			pub(this.supplyPattern, this.metaLevel, observerLevel)]);
 };
 
 DemandMatcher.prototype.handleEvent = function (e) {
@@ -430,11 +433,11 @@ DemandMatcher.prototype.handleEvent = function (e) {
 };
 
 DemandMatcher.prototype.handleGestalt = function (gestalt) {
-    var newDemandMatcher = gestalt.project(this.projectionSpec,
+    var newDemandMatcher = gestalt.project(this.demandProjectionSpec,
 					   !this.demandSideIsSubscription,
 					   this.metaLevel,
 					   this.demandLevel);
-    var newSupplyMatcher = gestalt.project(this.projectionSpec,
+    var newSupplyMatcher = gestalt.project(this.supplyProjectionSpec,
 					   this.demandSideIsSubscription,
 					   this.metaLevel,
 					   this.supplyLevel);
