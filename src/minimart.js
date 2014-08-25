@@ -179,11 +179,11 @@ World.prototype.kill = function (pid, exn) {
 	console.log("Process exited", pid, exn);
     }
     var p = this.processTable[pid];
-    if (p && p.behavior.trapexit) {
-	this.asChild(pid, function () { return p.behavior.trapexit(exn); });
-    }
     delete this.processTable[pid];
     if (p) {
+	if (p.behavior.trapexit) {
+	  this.asChild(pid, function () { return p.behavior.trapexit(exn); }, true);
+	}
 	if (exn) {
 	    p.exitReason = exn;
 	    this.tombstones[pid] = p;
