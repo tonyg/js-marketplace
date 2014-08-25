@@ -38,6 +38,20 @@ function WebSocketConnection(label, wsurl, shouldReconnect) {
     this.pingTimer = null;
 }
 
+WebSocketConnection.prototype.debugState = function () {
+  return {
+    label: this.label,
+    sendsAttempted: this.sendsAttempted,
+    sendsTransmitted: this.sendsTransmitted,
+    receiveCount: this.receiveCount,
+    wsurl: this.wsurl,
+    shouldReconnect: this.shouldReconnect,
+    reconnectDelay: this.reconnectDelay,
+    connectionCount: this.connectionCount,
+    activityTimestamp: this.activityTimestamp
+  };
+};
+
 WebSocketConnection.prototype.clearHeartbeatTimers = function () {
     if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
     if (this.pingTimer) { clearTimeout(this.pingTimer); this.pingTimer = null; }

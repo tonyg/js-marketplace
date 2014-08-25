@@ -420,6 +420,20 @@ function DemandMatcher(projection, metaLevel, options) {
     this.currentSupply = {};
 }
 
+DemandMatcher.prototype.debugState = function () {
+  return {
+    demandPattern: this.demandPattern,
+    supplyPattern: this.supplyPattern,
+    metaLevel: this.metaLevel,
+    demandLevel: this.demandLevel,
+    supplyLevel: this.supplyLevel,
+    demandSideIsSubscription: this.demandSideIsSubscription
+
+    // , currentDemand: this.currentDemand
+    // , currentSupply: this.currentSupply
+  };
+};
+
 DemandMatcher.prototype.boot = function () {
     var observerLevel = 1 + Math.max(this.demandLevel, this.supplyLevel);
     World.updateRoutes([sub(this.demandPattern, this.metaLevel, observerLevel),
