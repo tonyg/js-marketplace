@@ -74,7 +74,7 @@ function isAttributes(x) {
 
 DOMFragment.prototype.interpretSpec = function (spec) {
     // Fragment specs are roughly JSON-equivalents of SXML.
-    // spec ::== ["tag", {"attr": "value", ...}, spec, spec, ...]
+    // spec ::== ["tag", [["attr", "value"], ...], spec, spec, ...]
     //         | ["tag", spec, spec, ...]
     //         | "cdata"
     if (typeof(spec) === "string" || typeof(spec) === "number") {
