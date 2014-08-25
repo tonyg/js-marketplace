@@ -367,7 +367,8 @@ World.prototype.textProcessTree = function (ownPid) {
 	    var tombstoneString = p.exitReason ? ' (EXITED: ' + p.exitReason + ') ' : '';
 	    var stringifiedState;
 	    try {
-	      stringifiedState = JSON.stringify(p.behavior, function (k, v) {
+	      var rawState = p.behavior.debugState ? p.behavior.debugState() : p.behavior;
+	      stringifiedState = JSON.stringify(rawState, function (k, v) {
 		return (k === 'name') ? undefined : v;
 	      });
 	    } catch (e) {
