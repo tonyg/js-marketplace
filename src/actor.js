@@ -5,16 +5,22 @@ var Route = Minimart.Route;
 
 Actor._chunks = null;
 
-function Actor(ctor) {
-    var oldChunks = Actor._chunks;
-    try {
+function Actor(bootfn) {
+  return {
+    boot: function () {
+      delete this.boot;
+      var oldChunks = Actor._chunks;
+      try {
 	Actor._chunks = [];
-	var behavior = new ctor();
-	return finalizeActor(behavior, Actor._chunks);
-    } catch (e) {
+	bootfn.call(this);
+	finalizeActor(this, Actor._chunks);
+	Actor._chunks = oldChunks;
+      } catch (e) {
 	Actor._chunks = oldChunks;
 	throw e;
+      }
     }
+  };
 }
 
 function checkChunks(type) {
@@ -112,26 +118,10 @@ Actor.observeGestalt = function (gestaltFn, eventHandlerFn) {
 };
 
 function finalizeActor(behavior, chunks) {
-    var oldBoot = behavior.boot;
     var oldHandleEvent = behavior.handleEvent;
     var projections = {};
     var compiledProjections = {};
     var previousObjs = {};
-
-    behavior.boot = function () {
-	if (oldBoot) { oldBoot.call(this); }
-	for (var i = 0; i < chunks.length; i++) {
-	    var chunk = chunks[i];
-	    if (chunk.kind === 'observer') {
-		if (chunk.options.presence) { this[chunk.options.presence] = false; }
-		if (chunk.options.name) { this[chunk.options.name] = []; }
-		if (chunk.options.singleton) { this[chunk.options.singleton] = undefined; }
-		if (chunk.options.added) { this[chunk.options.added] = []; }
-		if (chunk.options.removed) { this[chunk.options.removed] = []; }
-	    }
-	}
-	this.updateRoutes();
-    };
 
     behavior.updateRoutes = function () {
 	var newRoutes = Route.emptyGestalt;
@@ -253,7 +243,18 @@ function finalizeActor(behavior, chunks) {
 	}
     };
 
-    return behavior;
+    if (behavior.boot) { behavior.boot(); }
+    for (var i = 0; i < chunks.length; i++) {
+      var chunk = chunks[i];
+      if (chunk.kind === 'observer') {
+	if (chunk.options.presence) { behavior[chunk.options.presence] = false; }
+	if (chunk.options.name) { behavior[chunk.options.name] = []; }
+	if (chunk.options.singleton) { behavior[chunk.options.singleton] = undefined; }
+	if (chunk.options.added) { behavior[chunk.options.added] = []; }
+	if (chunk.options.removed) { behavior[chunk.options.removed] = []; }
+      }
+    }
+    behavior.updateRoutes();
 }
 
 function kwApply(f, thisArg, args) {
