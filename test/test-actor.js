@@ -59,3 +59,14 @@ describe("configurationTrace", function() {
     });
   });
 });
+
+describe("nonempty initial routes", function () {
+  it("should be immediately signalled to the process", function () {
+    // Specifically, no Minimart.updateRoutes([]) first.
+    checkTrace(function (trace) {
+      World.spawn({ handleEvent: function (e) {
+	World.spawn({ handleEvent: trace }, [sub(["A", __], 0, 1)])
+      }}, [pub(["A", __])]);
+    }, [Minimart.updateRoutes([pub(["A", __]).label(1)])]);
+  });
+});
