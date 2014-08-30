@@ -297,6 +297,13 @@ describe("matcher equality", function () {
 });
 
 describe("gestalt equality", function () {
+  it("should distinguish emptyGestalt reliably", function () {
+    expect(r.simpleGestalt(false, r.__, 0, 10)
+	   .union(r.simpleGestalt(true, r.__, 0, 10))
+	   .equals(r.emptyGestalt))
+      .to.be(false);
+  });
+
   it("should not rely on object identity", function () {
     expect(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0))
 	   .equals(r.simpleGestalt(false, "A", 0, 0).union(r.simpleGestalt(true, "B", 0, 0))))

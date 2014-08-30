@@ -12,7 +12,7 @@ function Spy(label, useJson, observationLevel) {
 }
 
 Spy.prototype.boot = function () {
-    World.updateRoutes([sub(__, 0, this.observationLevel), pub(__, 0, this.observationLevel)]);
+    return [sub(__, 0, this.observationLevel), pub(__, 0, this.observationLevel)];
 };
 
 Spy.prototype.handleEvent = function (e) {

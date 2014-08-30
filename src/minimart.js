@@ -19,10 +19,8 @@ function pub(pattern, metaLevel, level) {
     return Route.simpleGestalt(true, pattern, metaLevel, level);
 }
 
-function spawn(behavior, initialGestalts) {
-    return { type: "spawn",
-	     behavior: behavior,
-	     initialGestalt: Route.gestaltUnion(initialGestalts || []) };
+function spawn(behavior) {
+    return { type: "spawn", behavior: behavior };
 }
 
 function updateRoutes(gestalts) {
@@ -85,8 +83,8 @@ World.updateRoutes = function (gestalts) {
     World.current().enqueueAction(World.activePid(), updateRoutes(gestalts));
 };
 
-World.spawn = function (behavior, initialGestalts) {
-    World.current().enqueueAction(World.activePid(), spawn(behavior, initialGestalts));
+World.spawn = function (behavior) {
+    World.current().enqueueAction(World.activePid(), spawn(behavior));
 };
 
 World.exit = function (exn) {
@@ -226,13 +224,18 @@ World.prototype.performAction = function (pid, action) {
     switch (action.type) {
     case "spawn":
 	var pid = World.nextPid++;
-	var newGestalt = action.initialGestalt.label(pid);
-	this.processTable[pid] = { gestalt: newGestalt, behavior: action.behavior };
-	if (action.behavior.boot) {
-	    this.asChild(pid, function () { action.behavior.boot() });
+        var entry = { gestalt: Route.emptyGestalt, behavior: action.behavior };
+	this.processTable[pid] = entry;
+	if (entry.behavior.boot) {
+	    var initialGestalts = this.asChild(pid, function () { return entry.behavior.boot() });
+	    if (initialGestalts) {
+	        entry.gestalt = Route.gestaltUnion(initialGestalts).label(pid);
+	    }
 	    this.markPidRunnable(pid);
 	}
-	this.applyAndIssueRoutingUpdate(Route.emptyGestalt, newGestalt, pid);
+        if (!Route.emptyGestalt.equals(entry.gestalt)) {
+	    this.applyAndIssueRoutingUpdate(Route.emptyGestalt, entry.gestalt, pid);
+	}
 	break;
     case "routes":
 	if (pid in this.processTable) {
@@ -313,6 +316,11 @@ World.prototype.dispatchEvent = function (e) {
 	exn.event = e;
 	throw exn;
     }
+};
+
+World.prototype.boot = function () {
+  // Needed in order for the new World to be marked as "runnable", so
+  // its initial actions get performed.
 };
 
 World.prototype.handleEvent = function (e) {
@@ -436,8 +444,8 @@ DemandMatcher.prototype.debugState = function () {
 
 DemandMatcher.prototype.boot = function () {
     var observerLevel = 1 + Math.max(this.demandLevel, this.supplyLevel);
-    World.updateRoutes([sub(this.demandPattern, this.metaLevel, observerLevel),
-			pub(this.supplyPattern, this.metaLevel, observerLevel)]);
+    return [sub(this.demandPattern, this.metaLevel, observerLevel),
+	    pub(this.supplyPattern, this.metaLevel, observerLevel)];
 };
 
 DemandMatcher.prototype.handleEvent = function (e) {

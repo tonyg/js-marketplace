@@ -12,6 +12,9 @@ $(document).ready(function () {
 
 	World.spawn({
 	    name: 'GestaltDisplay',
+	    boot: function () {
+	      return [sub(__, 0, 10), pub(__, 0, 10)];
+	    },
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
 		    var gd = document.getElementById('gestalt-display');
@@ -21,7 +24,7 @@ $(document).ready(function () {
 		    gd.appendChild(t);
 		}
 	    }
-	}, [sub(__, 0, 10), pub(__, 0, 10)]);
+	});
 
         World.spawn(new Actor(function () {
 	    this.counter = 0;

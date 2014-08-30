@@ -13,8 +13,9 @@ function Actor(bootfn) {
       try {
 	Actor._chunks = [];
 	bootfn.call(this);
-	finalizeActor(this, Actor._chunks);
+	var initialGestalt = finalizeActor(this, Actor._chunks);
 	Actor._chunks = oldChunks;
+	return [initialGestalt];
       } catch (e) {
 	Actor._chunks = oldChunks;
 	throw e;
@@ -123,7 +124,7 @@ function finalizeActor(behavior, chunks) {
     var compiledProjections = {};
     var previousObjs = {};
 
-    behavior.updateRoutes = function () {
+    behavior._computeRoutes = function () {
 	var newRoutes = Route.emptyGestalt;
 	for (var i = 0; i < chunks.length; i++) {
 	    var chunk = chunks[i];
@@ -159,7 +160,11 @@ function finalizeActor(behavior, chunks) {
 		}
 	    }
 	}
-	World.updateRoutes([newRoutes]);
+        return newRoutes;
+    };
+
+    behavior.updateRoutes = function () {
+        World.updateRoutes([this._computeRoutes()]);
     };
 
     behavior.handleEvent = function (e) {
@@ -254,7 +259,8 @@ function finalizeActor(behavior, chunks) {
 	if (chunk.options.removed) { behavior[chunk.options.removed] = []; }
       }
     }
-    behavior.updateRoutes();
+
+    return behavior._computeRoutes();
 }
 
 ///////////////////////////////////////////////////////////////////////////

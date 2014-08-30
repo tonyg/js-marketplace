@@ -76,7 +76,7 @@ $(document).ready(function () {
 	    // Monitor connection, notifying connectivity changes
 	    state: "crashed", // start with this to avoid spurious initial message print
 	    boot: function () {
-		World.updateRoutes([sub(["broker_state", __], 0, 1)]);
+	        return [sub(["broker_state", __], 0, 1)];
 	    },
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
@@ -94,7 +94,7 @@ $(document).ready(function () {
 	World.spawn({
 	    // Actual chat functionality
 	    boot: function () {
-		World.updateRoutes(this.subscriptions());
+		return this.subscriptions();
 	    },
 	    nym: function () { return $("#nym").val(); },
 	    currentStatus: function () { return $("#status").val(); },

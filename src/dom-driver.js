@@ -17,9 +17,7 @@ function spawnDOMDriver(domWrapFunction, jQueryWrapFunction) {
 				    fragmentClass,
 				    fragmentSpec,
 				    domWrapFunction,
-				    jQueryWrapFunction),
-		    [sub(domWrapFunction(selector, fragmentClass, fragmentSpec)),
-		     sub(domWrapFunction(selector, fragmentClass, fragmentSpec), 0, 1)]);
+				    jQueryWrapFunction));
     };
     World.spawn(d);
 }
@@ -40,12 +38,14 @@ function DOMFragment(selector, fragmentClass, fragmentSpec, domWrapFunction, jQu
 DOMFragment.prototype.boot = function () {
     var self = this;
     var monitoring =
-	sub(this.domWrapFunction(self.selector, self.fragmentClass, self.fragmentSpec), 1, 2);
+	sub(self.domWrapFunction(self.selector, self.fragmentClass, self.fragmentSpec), 1, 2);
+
     World.spawn(new World(function () {
 	Minimart.JQuery.spawnJQueryDriver(self.selector+" > ."+self.fragmentClass,
 					  1,
 					  self.jQueryWrapFunction);
 	World.spawn({
+	    boot: function () { return [monitoring] },
 	    handleEvent: function (e) {
 		if (e.type === "routes") {
 		    var level = e.gestalt.getLevel(1, 0); // find participant peers
@@ -54,8 +54,11 @@ DOMFragment.prototype.boot = function () {
 		    }
 		}
 	    }
-	}, [monitoring]);
+	});
     }));
+
+    return [sub(self.domWrapFunction(self.selector, self.fragmentClass, self.fragmentSpec)),
+	    sub(self.domWrapFunction(self.selector, self.fragmentClass, self.fragmentSpec), 0, 1)]
 };
 
 DOMFragment.prototype.handleEvent = function (e) {

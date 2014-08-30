@@ -17,8 +17,8 @@ function WakeDetector(period) {
 
 WakeDetector.prototype.boot = function () {
     var self = this;
-    World.updateRoutes([pub(this.message)]);
     this.timerId = setInterval(World.wrap(function () { self.trigger(); }), this.period);
+    return [pub(this.message)];
 };
 
 WakeDetector.prototype.handleEvent = function (e) {};

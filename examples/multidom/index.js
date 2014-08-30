@@ -29,6 +29,13 @@ $(document).ready(function () {
 	Minimart.RoutingTableWidget.spawnRoutingTableWidget("#spy-holder", "spy"); // local
 
 	World.spawn({
+	    boot: function () {
+	      return [pub(domWrap("#clicker-holder", localId + "-clicker",
+				  ["button", ["span", [["style", "font-style: italic"]],
+					      "Click me! (" + localId + ")"]])),
+		      pub("bump_count"),
+		      sub(jQueryWrap("button."+localId+"-clicker", "click", __))];
+	    },
 	    handleEvent: function (e) {
 		console.log(JSON.stringify(e));
 		if (e.type === "message"
@@ -40,11 +47,7 @@ $(document).ready(function () {
 		    World.send("bump_count");
 		}
 	    }
-	}, [pub(domWrap("#clicker-holder", localId + "-clicker",
-			["button", ["span", [["style", "font-style: italic"]],
-				    "Click me! (" + localId + ")"]])),
-	    pub("bump_count"),
-	    sub(jQueryWrap("button."+localId+"-clicker", "click", __))]);
+	});
 
 	World.spawn({
 	    counter: 0,

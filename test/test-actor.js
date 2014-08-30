@@ -47,10 +47,11 @@ describe("configurationTrace", function() {
     it("should yield an appropriate trace", function () {
       checkTrace(function (trace) {
 	World.spawn({
+	  boot: function () { return [sub(__)] },
 	  handleEvent: function (e) {
 	    trace(e);
 	  }
-	}, [sub(__)]);
+	});
 	World.send(123);
 	World.send(234);
       }, [Minimart.updateRoutes([]),
@@ -64,9 +65,15 @@ describe("nonempty initial routes", function () {
   it("should be immediately signalled to the process", function () {
     // Specifically, no Minimart.updateRoutes([]) first.
     checkTrace(function (trace) {
-      World.spawn({ handleEvent: function (e) {
-	World.spawn({ handleEvent: trace }, [sub(["A", __], 0, 1)])
-      }}, [pub(["A", __])]);
+      World.spawn({
+	boot: function () { return [pub(["A", __])] },
+	handleEvent: function (e) {
+	  World.spawn({
+	    boot: function () { return [sub(["A", __], 0, 1)] },
+	    handleEvent: trace
+	  });
+	}
+      });
     }, [Minimart.updateRoutes([pub(["A", __]).label(1)])]);
   });
 });
@@ -74,16 +81,19 @@ describe("nonempty initial routes", function () {
 describe("actor with nonempty initial routes", function () {
   it("shouldn't see initial empty conversational context", function () {
     checkTrace(function (trace) {
-      World.spawn({ handleEvent: function (e) {
-	World.spawn(new Actor(function () {
-	  Actor.observeAdvertisers(
-	    function () { return ["A", __] },
-	    { presence: "isPresent" },
-	    function () {
-	      trace(["isPresent", this.isPresent]);
-	    });
-	}));
-      }}, [pub(["A", __])]);
+      World.spawn({
+	boot: function () { return [pub(["A", __])] },
+	handleEvent: function (e) {
+	  World.spawn(new Actor(function () {
+	    Actor.observeAdvertisers(
+	      function () { return ["A", __] },
+	      { presence: "isPresent" },
+	      function () {
+		trace(["isPresent", this.isPresent]);
+	      });
+	  }));
+	}
+      });
     }, [["isPresent", true]]);
   });
 });

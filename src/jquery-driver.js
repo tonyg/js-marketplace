@@ -18,9 +18,7 @@ function spawnJQueryDriver(baseSelector, metaLevel, wrapFunction) {
 					  selector,
 					  eventName,
 					  metaLevel,
-					  wrapFunction),
-		    [pub(wrapFunction(selector, eventName, __), metaLevel),
-		     pub(wrapFunction(selector, eventName, __), metaLevel, 1)]);
+					  wrapFunction));
     };
     World.spawn(d);
 }
@@ -46,6 +44,11 @@ function JQueryEventRouter(baseSelector, selector, eventName, metaLevel, wrapFun
     this.computeNodes().on(this.preventDefault ? this.eventName : this.eventName.substring(1),
 			   this.handler);
 }
+
+JQueryEventRouter.prototype.boot = function () {
+  return [pub(this.wrapFunction(this.selector, this.eventName, __), this.metaLevel),
+	  pub(this.wrapFunction(this.selector, this.eventName, __), this.metaLevel, 1)];
+};
 
 JQueryEventRouter.prototype.handleEvent = function (e) {
     if (e.type === "routes" && e.gestalt.isEmpty()) {
