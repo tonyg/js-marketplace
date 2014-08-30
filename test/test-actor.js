@@ -70,3 +70,20 @@ describe("nonempty initial routes", function () {
     }, [Minimart.updateRoutes([pub(["A", __]).label(1)])]);
   });
 });
+
+describe("actor with nonempty initial routes", function () {
+  it("shouldn't see initial empty conversational context", function () {
+    checkTrace(function (trace) {
+      World.spawn({ handleEvent: function (e) {
+	World.spawn(new Actor(function () {
+	  Actor.observeAdvertisers(
+	    function () { return ["A", __] },
+	    { presence: "isPresent" },
+	    function () {
+	      trace(["isPresent", this.isPresent]);
+	    });
+	}));
+      }}, [pub(["A", __])]);
+    }, [["isPresent", true]]);
+  });
+});
