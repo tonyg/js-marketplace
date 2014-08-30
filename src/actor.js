@@ -1,5 +1,5 @@
-var Reflect = require("./reflect.js");
 var Minimart = require("./minimart.js");
+var util = require("./util.js");
 var World = Minimart.World;
 var Route = Minimart.Route;
 
@@ -178,7 +178,7 @@ function finalizeActor(behavior, chunks) {
 		{
 		    var matchResult = Route.matchPattern(e.message, projections[i]);
 		    if (matchResult) {
-			kwApply(chunk.handler, this, matchResult);
+			util.kwApply(chunk.handler, this, matchResult);
 		    }
 		}
 		break;
@@ -257,20 +257,6 @@ function finalizeActor(behavior, chunks) {
     behavior.updateRoutes();
 }
 
-function kwApply(f, thisArg, args) {
-    var formals = Reflect.formalParameters(f);
-    var actuals = []
-    for (var i = 0; i < formals.length; i++) {
-	var formal = formals[i];
-	if (!(formal in args)) {
-	    throw new Error("Function parameter '"+formal+"' not present in args");
-	}
-	actuals.push(args[formal]);
-    }
-    return f.apply(thisArg, actuals);
-}
-
 ///////////////////////////////////////////////////////////////////////////
 
 module.exports.Actor = Actor;
-module.exports.kwApply = kwApply;
