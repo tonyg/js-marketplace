@@ -10,6 +10,7 @@
 	"build-min": "browserify src/main.js -s Minimart -o dist/_minimart.js && uglifyjs dist/_minimart.js -o dist/minimart.min.js && rm dist/_minimart.js",
 	"build": "npm run build-debug && npm run build-min",
 	"watch": "watchify src/main.js -d -s Minimart -o dist/minimart.js",
+        "test": "mocha",
 	"prepublish": "npm run build"
     },
     "author": "Tony Garnock-Jones <tonyg@ccs.neu.edu>",
@@ -17,6 +18,7 @@
 	"watchify": "^0.6.1",
 	"uglify-js": "^2.4.12",
 	"browserify": "^3.30.4",
-	"mocha": "^1.17.1"
+	"mocha": "^1.17.1",
+        "expect.js": "^0.3.1"
     }
 }
